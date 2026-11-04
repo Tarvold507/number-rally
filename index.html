@@ -202,7 +202,7 @@ button{font:inherit;color:inherit}
 .settings-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:16px}
 input[type=text]{font:inherit;font-size:1.3rem;font-weight:700;padding:.5em .8em;border-radius:14px;border:2px solid var(--line);background:var(--card);color:var(--ink);width:100%;max-width:360px}
 input[type=text]:focus-visible{outline:3px solid var(--sky);outline-offset:1px}
-.toggle{display:flex;align-items:center;gap:12px;cursor:pointer;font-weight:700}
+.toggle{display:flex;align-items:center;gap:12px;cursor:pointer;font-weight:700;background:none;border:0;padding:4px 0;text-align:left;color:var(--ink);min-height:44px}
 .toggle .sw{width:56px;height:32px;border-radius:999px;background:var(--line);position:relative;flex:none;transition:background .15s}
 .toggle .sw::after{content:"";position:absolute;top:4px;left:4px;width:24px;height:24px;border-radius:50%;background:var(--card);transition:left .15s}
 .toggle.on .sw{background:var(--mint)}
@@ -249,6 +249,11 @@ input[type=text]:focus-visible{outline:3px solid var(--sky);outline-offset:1px}
 .toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--paper);padding:.6em 1.1em;border-radius:14px;font-weight:700;z-index:50}
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 [hidden]{display:none!important}
+.levelup{display:flex;flex-direction:column;align-items:center;gap:6px;text-align:center;border-color:var(--pencil);background:color-mix(in srgb,var(--pencil) 18%,var(--card));max-width:560px;width:100%}
+.levelup .lvl{font-weight:800;letter-spacing:.14em;font-size:.8rem;background:var(--pencil);color:var(--on-pencil);padding:.2em .7em;border-radius:999px}
+.grow{display:flex;flex-direction:column;gap:10px;border-top:2px solid var(--line);padding-top:12px}
+.growrow{display:flex;flex-direction:column;gap:4px}
+.growrow .muted{font-size:.88rem}
 .vh{position:absolute;width:1px;height:1px;opacity:0;overflow:hidden;clip:rect(0 0 0 0)}
 img{max-width:100%}
 textarea{font:inherit;font-size:.95rem;width:100%;min-height:96px;padding:.6em .8em;border-radius:14px;border:2px solid var(--line);background:var(--card);color:var(--ink);resize:vertical}
@@ -319,7 +324,8 @@ const sum=a=>a.reduce((x,y)=>x+y,0);
 const LS='numberRally.v1';
 let kids={};
 let prefs={sound:true,lastBackup:0,tipHidden:false};
-function loadLocal(){try{const t=localStorage.getItem(LS);if(t){const o=JSON.parse(t);kids=o.kids||{};prefs=Object.assign(prefs,o.prefs||{})}}catch(e){}}
+function loadLocal(){try{const t=localStorage.getItem(LS);if(t){const o=JSON.parse(t);kids=o.kids||{};prefs=Object.assign(prefs,o.prefs||{})}}catch(e){}
+  Object.values(kids).forEach(adapt)}
 let saveFailed=false;
 function saveLocal(){try{localStorage.setItem(LS,JSON.stringify({kids,prefs}));saveFailed=false}catch(e){if(!saveFailed){saveFailed=true;toast('Progress could not be saved on this tablet. Check that storage is not full.')}}}
 function saveKid(k){k.updated=Date.now();saveLocal()}
@@ -422,8 +428,57 @@ function gen(k,last){
   for(let i=0;i<20;i++){const p=(Math.random()<.3&&weakPick(k))||fresh(k.settings);if(p.key!==last)return p}
   return fresh(k.settings);
 }
+/* ---------- grow with me (automatic difficulty) ---------- */
+const WINDOW=30, NEED_ACC=.9;
+const TABLE_ORDER=[2,5,10,3,4,6,7,8,9];
+function adapt(k){if(!k.adapt)k.adapt={on:true,as:[],md:[],last:'',hist:[]};return k.adapt}
+function resetAdapt(k){const a=adapt(k);a.as=[];a.md=[]}
+const trackOf=op=>(op==='add'||op==='sub')?'as':'md';
+const hasAS=s=>s.ops.includes('add')||s.ops.includes('sub');
+const hasMD=s=>s.ops.includes('mul')||s.ops.includes('div');
+function speedLimit(s,tr){return tr==='md'?5000:s.addMax<=10?4000:s.addMax<=20?5000:8000}
+function median(a){const b=a.slice().sort((x,y)=>x-y),m=b.length>>1;return b.length%2?b[m]:(b[m-1]+b[m])/2}
+function readiness(k,tr){
+  const w=adapt(k)[tr],n=w.length,acc=n?sum(w.map(x=>x[0]))/n:0,med=n?median(w.map(x=>x[1])):0;
+  return {n,acc,med,limit:speedLimit(k.settings,tr),ok:n>=WINDOW&&acc>=NEED_ACC&&med<=speedLimit(k.settings,tr)};
+}
+function nextStep(s,tr){
+  if(tr==='as'){
+    if(!hasAS(s))return null;
+    if(!s.ops.includes('sub')&&s.ops.includes('add')&&s.addMax>=10)return {kid:'Taking away unlocked!',grown:'Taking away (−)',go:x=>{x.ops.push('sub')}};
+    const L=[5,10,20,50,100],nx=L.find(v=>v>s.addMax);
+    if(nx)return {kid:'Bigger numbers: up to '+nx+'!',grown:'Numbers up to '+nx,go:x=>{x.addMax=nx}};
+    if(s.ops.includes('sub')&&!hasMD(s))return {kid:'Times tables unlocked!',grown:'Times tables: 2s, 5s and 10s',go:x=>{x.ops.push('mul');x.tables=[2,5,10];x.mulMax=10}};
+    return null;
+  }
+  if(!hasMD(s))return null;
+  if(s.tables.length){
+    const t=TABLE_ORDER.find(v=>!s.tables.includes(v));
+    if(t)return {kid:'The '+t+' times table unlocked!',grown:'The '+t+' table',go:x=>{x.tables.push(t);x.tables.sort((a,b)=>a-b)}};
+    return {kid:'All the tables up to 10!',grown:'All tables up to 10',go:x=>{x.tables=[];x.mulMax=Math.max(10,x.mulMax)}};
+  }
+  if(s.ops.includes('mul')&&!s.ops.includes('div')&&s.mulMax>=10)return {kid:'Dividing unlocked!',grown:'Dividing (÷)',go:x=>{x.ops.push('div')}};
+  if(s.mulMax<10)return {kid:'Tables up to 10!',grown:'Tables up to 10',go:x=>{x.mulMax=10}};
+  if(s.mulMax<12)return {kid:'Tables up to 12!',grown:'Tables up to 12',go:x=>{x.mulMax=12}};
+  return null;
+}
+function tryGrow(k){
+  const a=adapt(k);
+  if(!a.on||a.last===dayKey())return null;
+  for(const tr of ['as','md']){
+    if(!readiness(k,tr).ok)continue;
+    const st=nextStep(k.settings,tr);if(!st)continue;
+    st.go(k.settings);
+    k.settings.ops.sort((x,y)=>Object.keys(OPS).indexOf(x)-Object.keys(OPS).indexOf(y));
+    resetAdapt(k);a.last=dayKey();
+    a.hist.unshift({t:Date.now(),text:(tr==='as'?'+ − ':'× ÷ ')+st.grown});if(a.hist.length>20)a.hist.length=20;
+    return st;
+  }
+  return null;
+}
 function record(k,p,ok,ms){
   ms=Math.min(ms,30000);
+  {const w=adapt(k)[trackOf(p.op)];w.push([ok?1:0,Math.round(ms)]);if(w.length>WINDOW)w.shift()}
   const t=k.totals[p.op];t[ok?0:1]++;t[2]+=ms;
   if(p.track){const f=k.facts[p.key]||(k.facts[p.key]=[0,0,0]);f[ok?0:1]++;f[2]+=Math.round(ms)}
   const dk=dayKey();k.days[dk]=(k.days[dk]||0)+1;
@@ -567,6 +622,8 @@ function Settings(){
         <span class="label" style="margin-top:6px">Only practice these tables</span>
         <div class="chips">${[1,2,3,4,5,6,7,8,9,10,11,12].map(t=>`<button class="chip ${s.tables.includes(t)?'on':''}" data-act="table" data-v="${t}">${t}</button>`).join('')}</div>
         <p class="muted">${s.tables.length?'Only the '+s.tables.join(', ')+' table'+(s.tables.length>1?'s':'')+'.':'None picked means every table up to '+s.mulMax+'.'}</p></div>
+      <div class="panel field"><span class="label">Grow with me</span>${(()=>{const on=adapt(k).on;return `<button class="toggle ${on?'on':''}" data-act="adapt" data-v="${k.id}" role="switch" aria-checked="${on}"><span class="sw"></span>Make it harder automatically</button>`})()}
+        <p class="muted">After ${WINDOW} answers in a row at ${NEED_ACC*100}% right and a quick pace, the app takes one small step up, at most once a day. Changing the math here starts the count over.</p></div>
       <div class="panel field"><span class="label">Practice length</span>${seg('practiceLen',[10,20,30],s.practiceLen,v=>v+' problems')}
         <span class="label">Worksheet size</span>${seg('sheetLen',[12,20,30],s.sheetLen,v=>v+' problems')}
         <span class="label">Beat the Clock</span>${seg('clockMin',[1,2,3],s.clockMin,v=>v+' min')}</div>
@@ -683,8 +740,8 @@ function finish(){
   }
   kid.stars+=bonus;
   const nb=endSession(kid,s);
-  run.res={headline,sub,stars:kid.stars-r.stars0,bonus,nb,won:r.mode!=='race'||s.won};
-  if(run.res.won&&(bonus||nb.length)){sfx.win();confetti()}
+  run.res={headline,sub,stars:kid.stars-r.stars0,bonus,nb,up:nb.up,won:r.mode!=='race'||s.won};
+  if(nb.up||(run.res.won&&(bonus||nb.length))){sfx.win();confetti()}
   go('result');
 }
 function endSession(k,s){
@@ -698,6 +755,7 @@ function endSession(k,s){
   earn('racer',!!s.won);earn('champ',!!s.won&&s.level>=5);
   earn('streak3',st>=3);earn('streak7',st>=7);
   earn('allops',Object.values(k.totals).every(t=>t[0]+t[1]>0));
+  nb.up=tryGrow(k);
   saveKid(k);
   return nb;
 }
@@ -707,6 +765,7 @@ function Result(){
   return `<div class="screen"><div class="result">
     <div class="avatar" style="width:110px;height:110px;font-size:4rem">${r.mode==='race'?(res.won?kid.racer:'🤖'):avHTML(kid.avatar)}</div>
     <h1>${esc(res.headline)}</h1><p style="font-size:1.2rem">${esc(res.sub)}</p>
+    ${res.up?levelUpCard(res.up):''}
     <div class="stars"><span class="star">★</span> +${res.stars}</div>
     ${res.bonus?'<p class="muted">Includes a '+res.bonus+'-star bonus.</p>':''}
     <div class="statrow"><div class="stat"><b>${r.right}</b>right</div><div class="stat"><b>${acc}%</b>correct</div><div class="stat"><b>${r.mode==='clock'?fmtTime(r.dur):fmtTime(secs)}</b>time</div></div>
@@ -714,6 +773,9 @@ function Result(){
     ${r.missed.length?`<h3>Practice these</h3><div class="missed">${uniqProbs(r.missed).map(p=>`<span>${inline(p)} = <em>${p.ans}</em></span>`).join('')}</div>`:''}
     <div class="row" style="justify-content:center;margin-top:8px"><button class="btn primary big" data-act="start" data-v="${r.mode}">Play again</button><button class="btn big" data-act="tohome">Home</button></div>
   </div></div>`;
+}
+function levelUpCard(up){
+  return `<div class="panel levelup"><span class="lvl">LEVEL UP</span><h2>${esc(up.kid)}</h2><p class="muted">You've been getting these right and fast, so here's a new challenge.</p></div>`;
 }
 function uniqProbs(a){const seen={};return a.filter(p=>seen[p.key]?false:(seen[p.key]=1))}
 
@@ -724,6 +786,7 @@ function Sheet(){
   const blanks=r.typed.filter(t=>t===''||t==='-').length;
   const neg=k.settings.neg&&k.settings.ops.includes('sub');
   const banner=r.graded?`<div class="panel spread" style="border-color:${right===r.probs.length?'var(--mint)':'var(--line)'}"><div><h2>${right} of ${r.probs.length} right${right===r.probs.length?' — perfect page!':''}</h2><p class="muted">+${kid.stars-r.stars0} stars · ${fmtTime(Math.round(r.ms/1000))}</p></div><div class="row"><button class="btn primary" data-act="start" data-v="sheet">New sheet</button><button class="btn" data-act="tohome">Home</button></div></div>
+    ${r.nb&&r.nb.up?levelUpCard(r.nb.up):''}
     ${r.nb&&r.nb.length?`<div class="panel row"><b>New sticker${r.nb.length>1?'s':''}:</b>${r.nb.map(b=>`<div class="sticker"><div class="disc">${b.g}</div>${b.n}</div>`).join('')}</div>`:''}`:'';
   return `<div class="screen">
     <div class="topbar"><button class="btn ghost" data-act="quit">✕ Stop</button><h2>Worksheet</h2><div class="row">${starPill()}</div></div>
@@ -763,7 +826,7 @@ function grade(force){
   const perfect=right===r.probs.length;
   if(perfect)kid.stars+=5;
   r.nb=endSession(kid,{t:Date.now(),mode:'sheet',n:r.probs.length,right,ms:r.ms});
-  if(perfect){sfx.win();confetti()}else sfx.ok();
+  if(perfect||r.nb.up){sfx.win();confetti()}else sfx.ok();
   render();$app.querySelector('.screen')?.scrollTo({top:0,behavior:'smooth'});
 }
 
@@ -804,11 +867,27 @@ function Parent(){
       <div class="panel" style="display:flex;flex-direction:column;gap:12px"><h3>Settings for ${esc(k.name)}</h3>
         <div class="mathline">${mathSummary(k.settings).map(t=>'<span class="tag">'+esc(t)+'</span>').join('')}</div>
         <div class="row"><button class="btn" data-act="psettings" data-v="${k.id}">Change the math</button></div>
+        ${growPanel(k)}
         <div class="row">${view.confirmDel===k.id?`<span><b>Delete ${esc(k.name)} and all progress?</b></span><button class="btn danger" data-act="delkid" data-v="${k.id}">Delete</button><button class="btn" data-act="canceldel">Cancel</button>`:`<button class="btn ghost danger" data-act="askdel" data-v="${k.id}">Delete player</button>`}</div>
       </div>
     </div>
     ${backupPanel()}
   </div>`;
+}
+function growPanel(k){
+  const a=adapt(k),s=k.settings;
+  const tog=`<button class="toggle ${a.on?'on':''}" data-act="adapt" data-v="${k.id}" role="switch" aria-checked="${a.on}"><span class="sw"></span>Grow with me: make it harder automatically</button>`;
+  if(!a.on)return `<div class="grow">${tog}</div>`;
+  const rows=['as','md'].map(tr=>{
+    const st=nextStep(s,tr);if(!st)return '';
+    const rd=readiness(k,tr),name=tr==='as'?'+ −':'× ÷';
+    const parts=[Math.min(rd.n,WINDOW)+'/'+WINDOW+' answers'];
+    if(rd.n)parts.push(Math.round(rd.acc*100)+'% right (needs '+NEED_ACC*100+'%)','median '+(rd.med/1000).toFixed(1)+'s (needs ≤'+(rd.limit/1000)+'s)');
+    return `<div class="growrow"><div><b>${name} next:</b> ${esc(st.grown)}</div><div class="muted">${parts.join(' · ')}</div><div class="accbar"><i style="width:${Math.min(1,rd.n/WINDOW)*100}%;background:${rd.ok?'var(--mint)':'var(--sky)'}"></i></div></div>`;
+  }).join('');
+  const today=a.last===dayKey()?'<p class="note good">Stepped up today. The next step can happen tomorrow at the earliest.</p>':'';
+  const hist=a.hist.length?`<div class="sessions">${a.hist.slice(0,5).map(h=>`<div><span>${esc(h.text)}</span><span class="muted">${new Date(h.t).toLocaleDateString(undefined,{month:'short',day:'numeric'})}</span></div>`).join('')}</div>`:'';
+  return `<div class="grow">${tog}${today}${rows||'<p class="muted">At the top level for the math picked here.</p>'}${hist?'<span class="label">Recent steps up</span>'+hist:''}</div>`;
 }
 function backupPanel(){
   const days=prefs.lastBackup?Math.floor((Date.now()-prefs.lastBackup)/864e5):null;
@@ -878,10 +957,10 @@ $app.addEventListener('click',e=>{
     case 'settings':go('settings',{kid,from:'home'});break;
     case 'psettings':go('settings',{kid:kids[v],from:'parent',pid:v});break;
     case 'back':{saveSettingsName();if(v==='parent')go('parent',{id:view.pid});else go('home');break;}
-    case 'op':{const s=(view.kid).settings,i=s.ops.indexOf(v);if(i>=0){if(s.ops.length===1){toast('Keep at least one kind of problem');return}s.ops.splice(i,1)}else s.ops.push(v);s.ops.sort((x,y)=>Object.keys(OPS).indexOf(x)-Object.keys(OPS).indexOf(y));saveSettingsName();saveKid(view.kid);render();break;}
-    case 'set':{view.kid.settings[b.dataset.k]=+v;saveSettingsName();saveKid(view.kid);render();break;}
+    case 'op':{resetAdapt(view.kid);const s=(view.kid).settings,i=s.ops.indexOf(v);if(i>=0){if(s.ops.length===1){toast('Keep at least one kind of problem');return}s.ops.splice(i,1)}else s.ops.push(v);s.ops.sort((x,y)=>Object.keys(OPS).indexOf(x)-Object.keys(OPS).indexOf(y));saveSettingsName();saveKid(view.kid);render();break;}
+    case 'set':{if(['addMax','mulMax'].includes(b.dataset.k))resetAdapt(view.kid);view.kid.settings[b.dataset.k]=+v;saveSettingsName();saveKid(view.kid);render();break;}
     case 'tog':{const s=view.kid.settings;s[b.dataset.k]=!s[b.dataset.k];saveSettingsName();saveKid(view.kid);render();break;}
-    case 'table':{const s=view.kid.settings,t=+v,i=s.tables.indexOf(t);if(i>=0)s.tables.splice(i,1);else{s.tables.push(t);s.tables.sort((x,y)=>x-y)}saveSettingsName();saveKid(view.kid);render();break;}
+    case 'table':{resetAdapt(view.kid);const s=view.kid.settings,t=+v,i=s.tables.indexOf(t);if(i>=0)s.tables.splice(i,1);else{s.tables.push(t);s.tables.sort((x,y)=>x-y)}saveSettingsName();saveKid(view.kid);render();break;}
     case 'setav':view.kid.avatar=v;saveSettingsName();saveKid(view.kid);render();break;
     case 'racer':kid.racer=v;saveKid(kid);sfx.tap();render();break;
     case 'start':sfx.tap();startRun(v);break;
@@ -894,6 +973,7 @@ $app.addEventListener('click',e=>{
     case 'askdel':view.confirmDel=v;render();break;
     case 'canceldel':view.confirmDel=null;render();break;
     case 'delkid':deleteKid(v);go('parent',{});toast('Player deleted');break;
+    case 'adapt':{const k=kids[v];if(k){adapt(k).on=!adapt(k).on;saveKid(k);render()}break;}
     case 'hidetip':prefs.tipHidden=true;saveLocal();render();break;
     case 'bsave':saveBackupFile();break;
     case 'bcopy':copyBackup();break;
