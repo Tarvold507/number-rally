@@ -109,6 +109,20 @@ button{font:inherit;color:inherit}
 .sticker{width:78px;display:flex;flex-direction:column;align-items:center;gap:4px;text-align:center;font-size:.78rem;font-weight:700;line-height:1.1}
 .sticker .disc{width:62px;height:62px;border-radius:50%;display:grid;place-items:center;font-family:var(--display);font-weight:800;font-size:1.15rem;
   background:var(--pencil);color:var(--on-pencil);border:3px solid color-mix(in srgb,var(--ink) 20%,var(--pencil));transform:rotate(-6deg)}
+.sticker .disc b{font-size:1.25rem;line-height:1}
+.sticker .disc small{font-size:.5rem;letter-spacing:.03em;text-transform:uppercase;line-height:1.1}
+.sticker .disc svg{width:30px;height:30px}
+.sticker.tier1:not(.locked) .disc{background:#E5AE7C;color:#4A2A12;border-color:#B47641}
+.sticker.tier2:not(.locked) .disc{background:#D6DDE5;color:#1D2B4F;border-color:#97A3B2}
+.sticker .sname{display:block}
+.sprog{display:block;width:56px;height:6px;border-radius:99px;background:color-mix(in srgb,var(--ink) 12%,transparent);overflow:hidden}
+.sprog i{display:block;height:100%;background:var(--sky);border-radius:99px}
+.sprog.wide{width:100%;height:10px}
+.scount{font-size:.72rem;color:var(--ink-soft);font-variant-numeric:tabular-nums}
+.goal{display:flex;gap:14px;align-items:center;border-top:2px solid var(--line);padding-top:12px}
+.trow{display:flex;gap:14px;align-items:center;flex-wrap:wrap;padding:10px 0;border-top:2px solid var(--line)}
+.trow:first-of-type{border-top:0}
+.tlabel{width:130px;font-weight:800}
 .sticker.locked .disc{background:transparent;color:var(--ink-soft);border:3px dashed var(--line);transform:none}
 .sticker.locked{color:var(--ink-soft)}
 .garage{display:flex;gap:10px;flex-wrap:wrap}
@@ -320,19 +334,6 @@ const LEVELS={
   grow:{name:'Adding & taking away',sub:'+ and − within 20 · ages 6–8',s:{ops:['add','sub'],addMax:20,mulMax:5,practiceLen:20,sheetLen:20}},
   tables:{name:'Times tables',sub:'× and ÷ up to 10 · ages 8–10',s:{ops:['mul','div'],addMax:100,mulMax:10,practiceLen:20,sheetLen:20}}
 };
-const BADGES=[
-  {id:'first10',g:'10',n:'Warm-up',d:'Answer 10 problems'},
-  {id:'c100',g:'100',n:'Century',d:'100 right answers'},
-  {id:'c500',g:'500',n:'Superstar',d:'500 right answers'},
-  {id:'c1000',g:'1K',n:'Thousand Club',d:'1,000 right answers'},
-  {id:'perfect',g:'✓',n:'Perfect Page',d:'Every answer right on a worksheet of 12+'},
-  {id:'speedy',g:'⚡',n:'Speedy',d:'15 right in one minute'},
-  {id:'racer',g:'1st',n:'First Win',d:'Beat Robo in a race'},
-  {id:'champ',g:'L5',n:'Champion',d:'Beat Robo at level 5'},
-  {id:'streak3',g:'3d',n:'On a Roll',d:'Practice 3 days in a row'},
-  {id:'streak7',g:'7d',n:'Week Streak',d:'Practice 7 days in a row'},
-  {id:'allops',g:'+×',n:'All Four',d:'Try + − × and ÷'}
-];
 const RACE_TARGET=12;
 const EXTRAS={miss:'? Missing number',cmp:'< > Compare',round:'≈ Rounding',place:'Place value',time:'Telling time',money:'Money'};
 const KIND_LABEL={add:'+ Adding',sub:'− Taking away',mul:'× Times',div:'÷ Dividing',miss:'? Missing number',cmp:'< > Compare',round:'≈ Rounding',place:'Place value',time:'Telling time',money:'Money'};
@@ -341,6 +342,57 @@ const TOPIC_NAME={add:'Adding',sub:'Taking away',mul:'Times',div:'Dividing',miss
 const TOPIC_ICON={add:'+',sub:'−',mul:'×',div:'÷',miss:'?',cmp:'&lt;&gt;',round:'≈',place:'<span class="pv2">1</span><span class="pv1">2</span><span class="pv0">3</span>',time:'<svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round"><circle cx="24" cy="24" r="19"/><path d="M24 13v11l7 5"/></svg>',money:'¢',all:'<svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"><path d="M6 14h8c8 0 12 20 20 20h8M6 34h8c3 0 5-3 7-7M27 21c2-4 4-7 7-7h8M38 9l5 5-5 5M38 29l5 5-5 5"/></svg>'};
 const kindsOf=s=>{const ks=s.ops.concat(s.extras||[]);return ks.length?ks:['add']};
 const topicLabel=t=>t&&t!=='all'?TOPIC_NAME[t]:'';
+/* ---------- stickers ---------- */
+const TOPIC_STICKERS={add:['Adder','Sum Sleuth','Addition Ace'],sub:['Take-Away Kid','Borrow Boss','Subtraction Star'],mul:['Times Rookie','Table Tamer','Times Master'],div:['Fair Sharer','Divide & Conquer','Division Dynamo'],miss:['Detective','Mystery Solver','Master Detective'],cmp:['Gator Eyes','Number Judge','Compare Champ'],round:['Rounder','Round-Up Pro','Rounding Royal'],place:['Bead Counter','Place Pro','Value Wizard'],time:['Tick Tock','Clock Reader','Time Keeper'],money:['Penny Saver','Coin Counter','Money Bags']};
+const TIERS=[25,100,250];
+const rightOf=(k,x)=>k.totals[x]?k.totals[x][0]:0;
+const triedOf=(k,x)=>k.totals[x]?k.totals[x][0]+k.totals[x][1]:0;
+const stk=(id,cat,g,n,d,prog,extra)=>Object.assign({id,cat,g,n,d,prog},extra||{});
+const nlab=(b,sm)=>`<b>${b}</b><small>${sm}</small>`;
+const BADGES=[
+  stk('first10','start','10','Warm-up','Answer 10 problems',k=>[attempts(k),10]),
+  stk('allops','start','+×','All Four','Try + − × and ÷',k=>[['add','sub','mul','div'].filter(o=>triedOf(k,o)>0).length,4]),
+  stk('explorer','start','5+','Explorer','Answer 5 problems in 5 different topics',k=>[ALL_KINDS.filter(o=>triedOf(k,o)>=5).length,5]),
+  stk('c100','total','100','Century','100 right answers',k=>[rights(k),100]),
+  stk('c500','total','500','Superstar','500 right answers',k=>[rights(k),500]),
+  stk('c1000','total','1K','Thousand Club','1,000 right answers',k=>[rights(k),1000]),
+  stk('c2500','total','2.5K','Super Solver','2,500 right answers',k=>[rights(k),2500]),
+  stk('c5000','total','5K','Mega Mind','5,000 right answers',k=>[rights(k),5000]),
+  stk('days5','days',nlab(5,'days'),'Regular','Practice on 5 different days',k=>[k.stats.days,5]),
+  stk('days10','days',nlab(10,'days'),'Ten Days','Practice on 10 different days',k=>[k.stats.days,10]),
+  stk('days25','days',nlab(25,'days'),'Dedicated','Practice on 25 different days',k=>[k.stats.days,25]),
+  stk('days50','days',nlab(50,'days'),'Fifty Days','Practice on 50 different days',k=>[k.stats.days,50]),
+  stk('days100','days',nlab(100,'days'),'Hundred Days','Practice on 100 different days',k=>[k.stats.days,100]),
+  stk('streak3','days',nlab(3,'in a row'),'On a Roll','Practice 3 days in a row',k=>[Math.max(k.stats.bestStreak,streak(k)),3]),
+  stk('streak7','days',nlab(7,'in a row'),'Week Streak','Practice 7 days in a row',k=>[Math.max(k.stats.bestStreak,streak(k)),7]),
+  stk('streak14','days',nlab(14,'in a row'),'Two Weeks','Practice 14 days in a row',k=>[Math.max(k.stats.bestStreak,streak(k)),14]),
+  stk('streak30','days',nlab(30,'in a row'),'Unstoppable','Practice 30 days in a row',k=>[Math.max(k.stats.bestStreak,streak(k)),30]),
+  stk('early','days','AM','Early Bird','Practice before 8 in the morning',k=>[k.stats.early,1]),
+  stk('weekend','days','S+S','Weekend Warrior','Practice on a Saturday and the Sunday after',k=>[k.stats.weekend,1]),
+  stk('practice10','games',nlab(10,'practices'),'Practice Pal','Finish 10 practice rounds',k=>[k.stats.practices,10]),
+  stk('sheets10','games',nlab(10,'sheets'),'Worksheet Pro','Finish 10 worksheets',k=>[k.stats.sheets,10]),
+  stk('perfect','games','✓','Perfect Page','Get every answer right on a worksheet of 12 or more',k=>[k.stats.perfectSheets,1]),
+  stk('perfect5','games','✓5','Perfect Five','Get 5 perfect worksheets',k=>[k.stats.perfectSheets,5]),
+  stk('speedy','games','⚡','Speedy','15 right in one minute',k=>[Math.floor(k.stats.bestRate),15]),
+  stk('lightning','games','⚡⚡','Lightning','25 right in one minute',k=>[Math.floor(k.stats.bestRate),25]),
+  stk('racer','games','1st','First Win','Beat Robo in a race',k=>[k.stats.raceWins,1]),
+  stk('champ','games','L5','Champion','Beat Robo at level 5',k=>[k.stats.maxRaceWin,5]),
+  stk('legend','games','L10','Legend','Beat Robo at level 10',k=>[k.stats.maxRaceWin,10]),
+  stk('up1','grow','↑','Growing Up','Take your first step up',k=>[k.stats.ups,1]),
+  stk('up5','grow','↑5','Sky High','Take 5 steps up',k=>[k.stats.ups,5])
+].concat(...ALL_KINDS.map(x=>TIERS.map((t,i)=>stk(x+t,'topic',TOPIC_ICON[x],TOPIC_STICKERS[x][i],'Get '+t+' '+TOPIC_NAME[x].toLowerCase()+' answers right',k=>[rightOf(k,x),t],{kind:x,tier:i+1}))));
+const BADGE_CATS=[['days','Coming back'],['games','Games'],['total','Right answers'],['start','Getting started'],['grow','Grow with me']];
+function visibleBadges(k){const ks=kindsOf(k.settings);return BADGES.filter(b=>b.cat!=='topic'||ks.includes(b.kind)||k.badges[b.id]||b.prog(k)[0]>0)}
+function stickerHTML(b,k,showProg){
+  const got=!k||!!k.badges[b.id];let pr='';
+  if(!got&&showProg){const [c,t]=b.prog(k);pr=`<span class="sprog"><i style="width:${Math.min(100,c/t*100)}%"></i></span><span class="scount">${Math.min(c,t)}/${t}</span>`}
+  return `<div class="sticker ${got?'':'locked'} ${b.tier?'tier'+b.tier:''}" title="${esc(b.d)}"><div class="disc">${b.g}</div><span class="sname">${esc(b.n)}</span>${pr}</div>`;
+}
+function nextGoal(k){
+  let best=null;
+  for(const b of visibleBadges(k)){if(k.badges[b.id])continue;const [c,t]=b.prog(k),r=c/t;if(r>=1)continue;if(!best||r>best.r||(r===best.r&&t-c<best.t-best.c))best={b,c,t,r}}
+  return best;
+}
 const TIME_LV=['Hour','Half hour','Quarter hour','5 minutes','Any minute'];
 const MONEY_LV=['Pennies, nickels & dimes','Add quarters (under $1)','Add dollars (up to $10)'];
 const DEF_SETTINGS={ops:['add'],extras:[],addMax:10,neg:false,mulMax:10,tables:[],rem:false,placeMax:100,timeLevel:2,moneyLevel:1,practiceLen:20,sheetLen:20,clockMin:1};
@@ -414,12 +466,20 @@ function applyBackup(list){
 function newKid(name,avatar,lv){
   return {id:'k'+Date.now().toString(36)+Math.random().toString(36).slice(2,6),name,avatar,created:Date.now(),updated:Date.now(),
     settings:Object.assign(clone(DEF_SETTINGS),clone(LEVELS[lv].s)),
-    stars:0,racer:'🚗',raceLevel:1,totals:Object.fromEntries(ALL_KINDS.map(x=>[x,[0,0,0]])),facts:{},days:{},sessions:[],bests:{},badges:{}};
+    stars:0,racer:'🚗',raceLevel:1,totals:Object.fromEntries(ALL_KINDS.map(x=>[x,[0,0,0]])),facts:{},days:{},sessions:[],bests:{},badges:{},
+    stats:{days:0,practices:0,sheets:0,perfectSheets:0,raceWins:0,maxRaceWin:0,bestRate:0,bestStreak:0,ups:0,early:0,weekend:0}};
 }
 function migrate(k){
   k.settings=Object.assign(clone(DEF_SETTINGS),k.settings||{});
   if(!Array.isArray(k.settings.extras))k.settings.extras=[];
   k.totals=k.totals||{};ALL_KINDS.forEach(x=>{if(!k.totals[x])k.totals[x]=[0,0,0]});
+  if(!k.stats){
+    const ss=k.sessions||[];
+    k.stats={days:Object.keys(k.days||{}).length,practices:ss.filter(x=>x.mode==='practice').length,sheets:ss.filter(x=>x.mode==='sheet').length,
+      perfectSheets:ss.filter(x=>x.mode==='sheet'&&x.n>=12&&x.right===x.n).length,raceWins:ss.filter(x=>x.won).length,
+      maxRaceWin:Math.max(0,...ss.filter(x=>x.won).map(x=>x.level||0)),bestRate:Math.max(0,...ss.filter(x=>x.mode==='clock').map(x=>x.right/(x.clockMin||1))),
+      bestStreak:streak(k),ups:(k.adapt&&k.adapt.hist||[]).length,early:0,weekend:0};
+  }
   adapt(k);return k;
 }
 function attempts(k){return sum(Object.values(k.totals).map(t=>t[0]+t[1]))}
@@ -649,7 +709,7 @@ function record(k,p,ok,ms){
   if(OPS[p.kind]){const w=adapt(k)[trackOf(p.kind)];w.push([ok?1:0,Math.round(ms)]);if(w.length>WINDOW)w.shift()}
   const t=k.totals[p.kind]||(k.totals[p.kind]=[0,0,0]);t[ok?0:1]++;t[2]+=ms;
   if(p.track){const f=k.facts[p.key]||(k.facts[p.key]=[0,0,0]);f[ok?0:1]++;f[2]+=Math.round(ms)}
-  const dk=dayKey();k.days[dk]=(k.days[dk]||0)+1;
+  const dk=dayKey();if(!k.days[dk]&&k.stats)k.stats.days++;k.days[dk]=(k.days[dk]||0)+1;
   if(ok)k.stars++;
 }
 function probHTML(p,typed,showAns){
@@ -722,7 +782,7 @@ function toast(msg){const t=document.createElement('div');t.className='toast';t.
 let screen='profiles',kid=null,run=null,cleanups=[],view={};
 function go(name,v){cleanups.forEach(f=>{try{f()}catch(e){}});cleanups=[];screen=name;view=v||{};render();$app.querySelector('.screen')?.scrollTo(0,0)}
 function render(){
-  const f={profiles:Profiles,add:AddKid,home:Home,pick:Pick,settings:Settings,play:Play,sheet:Sheet,result:Result,parent:Parent}[screen];
+  const f={profiles:Profiles,add:AddKid,home:Home,pick:Pick,stickers:StickerBook,settings:Settings,play:Play,sheet:Sheet,result:Result,parent:Parent}[screen];
   $app.innerHTML=f();
   if(screen==='play')drawPlay();
 }
@@ -788,8 +848,7 @@ function Home(){
     </div>
     <div class="panel spread"><div class="mathline"><span class="label" style="margin-right:4px">Your math</span>${mathSummary(s).map(t=>'<span class="tag">'+esc(t)+'</span>').join('')}</div><button class="btn" data-act="settings">Change</button></div>
     <div class="two">
-      <div class="panel" style="display:flex;flex-direction:column;gap:12px"><div class="spread"><h3>Stickers</h3><span class="muted">${Object.keys(k.badges).length} of ${BADGES.length}</span></div>
-        <div class="stickers">${BADGES.map(b=>`<div class="sticker ${k.badges[b.id]?'':'locked'}" title="${esc(b.d)}"><div class="disc">${b.g}</div>${b.n}</div>`).join('')}</div></div>
+      ${stickerPanel(k)}
       <div class="panel" style="display:flex;flex-direction:column;gap:12px"><div class="spread"><h3>Garage</h3><span class="muted">${next?'Next ride at ★'+next.s:'All rides unlocked'}</span></div>
         <div class="garage">${RACERS.map(r=>{const ok=k.stars>=r.s;return `<button class="car ${k.racer===r.e?'sel':''} ${ok?'':'locked'}" data-act="${ok?'racer':''}" data-v="${r.e}" ${ok?'':'aria-disabled="true"'}><span class="e">${r.e}</span>${ok?(k.racer===r.e?'Racing':'Pick'):'★ '+r.s}</button>`}).join('')}</div>
         <p class="muted">${unlocked.length} of ${RACERS.length} unlocked. Every right answer earns a star.</p></div>
@@ -798,6 +857,26 @@ function Home(){
 }
 function seg(name,opts,cur,fmt){return `<div class="chips">${opts.map(o=>`<button class="chip ${o===cur?'on':''}" data-act="set" data-k="${name}" data-v="${o}">${fmt?fmt(o):o}</button>`).join('')}</div>`}
 function tog(name,on,text){return `<button class="toggle ${on?'on':''}" data-act="tog" data-k="${name}" role="switch" aria-checked="${on}"><span class="sw"></span>${text}</button>`}
+function stickerPanel(k){
+  const vis=visibleBadges(k),got=vis.filter(b=>k.badges[b.id]),recent=got.slice().sort((a,b)=>k.badges[b.id]-k.badges[a.id]).slice(0,5),g=nextGoal(k);
+  return `<div class="panel" style="display:flex;flex-direction:column;gap:12px"><div class="spread"><h3>Stickers</h3><span class="muted">${got.length} of ${vis.length}</span></div>
+    ${recent.length?`<div class="stickers">${recent.map(b=>stickerHTML(b)).join('')}</div>`:'<p class="muted">Finish a round to earn your first sticker.</p>'}
+    ${g?`<div class="goal">${stickerHTML(g.b,k)}<div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:4px"><span class="label">Next sticker</span><b>${esc(g.b.n)}</b><span class="muted">${esc(g.b.d)}</span><span class="sprog wide"><i style="width:${Math.round(g.r*100)}%"></i></span><span class="scount">${g.c} of ${g.t}</span></div></div>`:''}
+    <div class="row"><button class="btn" data-act="stickers">Open sticker book</button></div></div>`;
+}
+function StickerBook(){
+  const k=kid,vis=visibleBadges(k),got=vis.filter(b=>k.badges[b.id]).length;
+  const tk=ALL_KINDS.filter(x=>vis.some(b=>b.kind===x));
+  const hidden=ALL_KINDS.length-tk.length;
+  return `<div class="screen">
+    <div class="topbar"><button class="btn ghost" data-act="tohome">‹ Back</button><h2>Sticker book</h2><span>${starPill()}</span></div>
+    <div class="panel spread"><div><h3>${got} of ${vis.length} collected</h3><p class="muted">Bronze, silver and gold topic stickers come at 25, 100 and 250 right answers.</p></div></div>
+    <div class="panel" style="display:flex;flex-direction:column;gap:6px"><h3>Topics</h3>
+      ${tk.map(x=>`<div class="trow"><span class="tlabel">${TOPIC_NAME[x]}</span><div class="stickers">${vis.filter(b=>b.kind===x).map(b=>stickerHTML(b,k,true)).join('')}</div></div>`).join('')}
+      ${hidden?'<p class="muted">More topic stickers appear when a grown-up turns on more skills.</p>':''}</div>
+    <div class="two">${BADGE_CATS.map(([c,label])=>`<div class="panel" style="display:flex;flex-direction:column;gap:10px"><h3>${label}</h3><div class="stickers">${vis.filter(b=>b.cat===c).map(b=>stickerHTML(b,k,true)).join('')}</div></div>`).join('')}</div>
+  </div>`;
+}
 function topicSub(s,t){
   switch(t){
     case 'add':case 'sub':return 'Up to '+s.addMax.toLocaleString('en-US');
@@ -968,15 +1047,16 @@ function finish(){
 function endSession(k,s){
   k.sessions.unshift(s);if(k.sessions.length>60)k.sessions.length=60;
   const keys=Object.keys(k.days).sort();while(keys.length>120)delete k.days[keys.shift()];
-  const R=rights(k),A=attempts(k),st=streak(k),nb=[];
-  const earn=(id,cond)=>{if(cond&&!k.badges[id]){k.badges[id]=Date.now();nb.push(BADGES.find(b=>b.id===id))}};
-  earn('first10',A>=10);earn('c100',R>=100);earn('c500',R>=500);earn('c1000',R>=1000);
-  earn('perfect',s.mode==='sheet'&&s.n>=12&&s.right===s.n);
-  earn('speedy',s.mode==='clock'&&s.right/s.clockMin>=15);
-  earn('racer',!!s.won);earn('champ',!!s.won&&s.level>=5);
-  earn('streak3',st>=3);earn('streak7',st>=7);
-  earn('allops',['add','sub','mul','div'].every(o=>k.totals[o]&&k.totals[o][0]+k.totals[o][1]>0));
-  nb.up=tryGrow(k);
+  const S=k.stats,now=new Date(),nb=[];
+  if(s.mode==='practice')S.practices++;
+  if(s.mode==='sheet'){S.sheets++;if(s.n>=12&&s.right===s.n)S.perfectSheets++}
+  if(s.mode==='clock')S.bestRate=Math.max(S.bestRate,s.right/s.clockMin);
+  if(s.won){S.raceWins++;S.maxRaceWin=Math.max(S.maxRaceWin,s.level)}
+  if(now.getHours()<8)S.early=1;
+  if(now.getDay()===0){const y=new Date();y.setDate(y.getDate()-1);if(k.days[dayKey(y)])S.weekend=1}
+  S.bestStreak=Math.max(S.bestStreak,streak(k));
+  nb.up=tryGrow(k);if(nb.up)S.ups++;
+  for(const b of BADGES)if(!k.badges[b.id]){const [c,t]=b.prog(k);if(c>=t){k.badges[b.id]=Date.now();nb.push(b)}}
   saveKid(k);
   return nb;
 }
@@ -990,7 +1070,7 @@ function Result(){
     <div class="stars"><span class="star">★</span> +${res.stars}</div>
     ${res.bonus?'<p class="muted">Includes a '+res.bonus+'-star bonus.</p>':''}
     <div class="statrow"><div class="stat"><b>${r.right}</b>right</div><div class="stat"><b>${acc}%</b>correct</div><div class="stat"><b>${r.mode==='clock'?fmtTime(r.dur):fmtTime(secs)}</b>time</div></div>
-    ${res.nb.length?`<h3>New sticker${res.nb.length>1?'s':''}!</h3><div class="newbadge">${res.nb.map(b=>`<div class="sticker"><div class="disc">${b.g}</div>${b.n}</div>`).join('')}</div>`:''}
+    ${res.nb.length?`<h3>New sticker${res.nb.length>1?'s':''}!</h3><div class="newbadge">${res.nb.map(b=>stickerHTML(b)).join('')}</div>`:''}
     ${r.missed.length?`<h3>Practice these</h3><div class="missed">${uniqProbs(r.missed).map(p=>`<span>${fullHTML(p)}</span>`).join('')}</div>`:''}
     <div class="row" style="justify-content:center;margin-top:8px"><button class="btn primary big" data-act="start" data-v="${r.mode}" data-topic="${r.topic||'all'}">Play again</button>${r.mode==='practice'?'<button class="btn big" data-act="pick" data-v="practice">New topic</button>':''}<button class="btn big" data-act="tohome">Home</button></div>
   </div></div>`;
@@ -1007,7 +1087,7 @@ function Sheet(){
   const blanks=r.typed.filter(isBlank).length;
   const banner=r.graded?`<div class="panel spread" style="border-color:${right===r.probs.length?'var(--mint)':'var(--line)'}"><div><h2>${right} of ${r.probs.length} right${right===r.probs.length?' — perfect page!':''}</h2><p class="muted">+${kid.stars-r.stars0} stars · ${fmtTime(Math.round(r.ms/1000))}</p></div><div class="row"><button class="btn primary" data-act="start" data-v="sheet" data-topic="${r.topic||'all'}">New sheet</button><button class="btn" data-act="pick" data-v="sheet">New topic</button><button class="btn" data-act="tohome">Home</button></div></div>
     ${r.nb&&r.nb.up?levelUpCard(r.nb.up):''}
-    ${r.nb&&r.nb.length?`<div class="panel row"><b>New sticker${r.nb.length>1?'s':''}:</b>${r.nb.map(b=>`<div class="sticker"><div class="disc">${b.g}</div>${b.n}</div>`).join('')}</div>`:''}`:'';
+    ${r.nb&&r.nb.length?`<div class="panel row"><b>New sticker${r.nb.length>1?'s':''}:</b>${r.nb.map(b=>stickerHTML(b)).join('')}</div>`:''}`:'';
   return `<div class="screen">
     <div class="topbar"><button class="btn ghost" data-act="quit">✕ Stop</button><h2>Worksheet${topicLabel(r.topic)?' · '+esc(topicLabel(r.topic)):''}</h2><div class="row">${starPill()}</div></div>
     ${banner}
@@ -1179,6 +1259,7 @@ $app.addEventListener('click',e=>{
     case 'setav':view.kid.avatar=v;saveSettingsName();saveKid(view.kid);render();break;
     case 'racer':kid.racer=v;saveKid(kid);sfx.tap();render();break;
     case 'start':sfx.tap();startRun(v,b.dataset.topic);break;
+    case 'stickers':sfx.tap();go('stickers');break;
     case 'pick':sfx.tap();if(kindsOf(kid.settings).length<2)startRun(v,'all');else go('pick',{mode:v});break;
     case 'quit':if(run){run.done=true;saveKid(kid)}go('home');break;
     case 'cell':if(!run.graded){run.sel=+v;run.warn=false;sfx.tap();render()}break;
