@@ -429,7 +429,7 @@ function gen(k,last){
   return fresh(k.settings);
 }
 /* ---------- grow with me (automatic difficulty) ---------- */
-const WINDOW=30, NEED_ACC=.9;
+const WINDOW=50, NEED_ACC=.9;
 const TABLE_ORDER=[2,5,10,3,4,6,7,8,9];
 function adapt(k){if(!k.adapt)k.adapt={on:true,as:[],md:[],last:'',hist:[]};return k.adapt}
 function resetAdapt(k){const a=adapt(k);a.as=[];a.md=[]}
