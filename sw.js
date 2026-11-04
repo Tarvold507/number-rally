@@ -1,6 +1,6 @@
 // Number Rally offline support.
 // Bump VERSION whenever any file changes so tablets pick up the update.
-const VERSION = 'nr-v3';
+const VERSION = 'nr-v4';
 const FILES = [
   './',
   'index.html',
@@ -9,11 +9,10 @@ const FILES = [
   'icons/icon-512.png',
   'icons/icon-maskable-512.png',
   'icons/apple-touch-icon.png',
-  'fonts/lilita-one-latin-400-normal.woff2',
-  'fonts/baloo-2-latin-400-normal.woff2',
-  'fonts/baloo-2-latin-600-normal.woff2',
-  'fonts/baloo-2-latin-700-normal.woff2',
-  'fonts/baloo-2-latin-800-normal.woff2'
+  'fonts/atkinson-hyperlegible-mono-latin-400-normal.woff2',
+  'fonts/atkinson-hyperlegible-mono-latin-600-normal.woff2',
+  'fonts/atkinson-hyperlegible-mono-latin-700-normal.woff2',
+  'fonts/atkinson-hyperlegible-mono-latin-800-normal.woff2'
 ];
 
 self.addEventListener('install', e => {

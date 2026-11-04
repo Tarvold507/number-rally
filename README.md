@@ -10,4 +10,4 @@ Math facts practice for kids: one-at-a-time practice, beat-the-clock drills, wor
 
 Served by GitHub Pages from the `main` branch root. When you change any file, bump `VERSION` in `sw.js` so installed copies update.
 
-Fonts: Baloo 2 and Lilita One, SIL Open Font License (see `fonts/`).
+Font: Atkinson Hyperlegible Mono, SIL Open Font License (see `fonts/`).
