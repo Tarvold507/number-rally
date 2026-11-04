@@ -788,10 +788,21 @@ function toast(msg){const t=document.createElement('div');t.className='toast';t.
 /* ---------- navigation ---------- */
 let screen='profiles',kid=null,run=null,cleanups=[],view={};
 function go(name,v){cleanups.forEach(f=>{try{f()}catch(e){}});cleanups=[];if(!['parent','settings','add'].includes(name))grownUntil=0;screen=name;view=v||{};render();$app.querySelector('.screen')?.scrollTo(0,0)}
+let lastScreen='';
 function render(){
+  const old=$app.querySelector('.screen'),top=old?old.scrollTop:0,same=lastScreen===screen;
   const f={profiles:Profiles,add:AddKid,home:Home,avatar:AvatarPick,pick:Pick,stickers:StickerBook,settings:Settings,play:Play,sheet:Sheet,result:Result,parent:Parent}[screen];
   $app.innerHTML=f();
+  lastScreen=screen;
+  if(same&&top){const n=$app.querySelector('.screen');if(n)n.scrollTop=top}
   if(screen==='play')drawPlay();
+}
+function ensureSel(){
+  const sel=$app.querySelector('.cell.sel'),pad=$app.querySelector('.sheetpad');if(!sel)return;
+  let mb=12;
+  if(pad){const pr=pad.getBoundingClientRect(),cr=sel.getBoundingClientRect();if(pr.left<cr.right&&pr.right>cr.left)mb=pr.height+12}
+  sel.style.scrollMarginBottom=mb+'px';sel.style.scrollMarginTop='12px';
+  sel.scrollIntoView({block:'nearest'});
 }
 function starPill(){return kid?'<span class="pill" title="Stars"><span class="star">★</span>'+kid.stars+'</span>':''}
 function soundBtn(){return '<button class="btn ghost" data-act="sound" aria-label="'+(prefs.sound?'Turn sound off':'Turn sound on')+'">'+(prefs.sound?'🔊':'🔈')+'</button>'}
@@ -1115,7 +1126,7 @@ function sheetKey(k){
   if(k==='go'){const nx=nextBlank(i);r.sel=nx<0?i:nx}
   else r.typed[i]=applyKey(r.probs[i],r.typed[i],k);
   sfx.tap();r.warn=false;render();
-  const sel=$app.querySelector('.cell.sel');if(sel)sel.scrollIntoView({block:'nearest',behavior:'smooth'});
+  ensureSel();
 }
 function nextBlank(i){const n=run.probs.length;for(let j=1;j<=n;j++){const x=(i+j)%n;if(isBlank(run.typed[x]))return x}return -1}
 function grade(force){
@@ -1316,7 +1327,7 @@ $app.addEventListener('click',e=>{
     case 'stickers':sfx.tap();go('stickers');break;
     case 'pick':sfx.tap();if(kindsOf(kid.settings).length<2)startRun(v,'all');else go('pick',{mode:v});break;
     case 'quit':if(run){run.done=true;saveKid(kid)}go('home');break;
-    case 'cell':if(!run.graded){run.sel=+v;run.warn=false;sfx.tap();render()}break;
+    case 'cell':if(!run.graded){run.sel=+v;run.warn=false;sfx.tap();render();ensureSel()}break;
     case 'grade':grade(v==='force');break;
     case 'nowarn':run.warn=false;render();break;
     case 'gate':requireGrownup(()=>go('parent'));break;
