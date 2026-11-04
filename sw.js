@@ -1,6 +1,6 @@
 // Number Rally offline support.
 // Bump VERSION whenever any file changes so tablets pick up the update.
-const VERSION = 'nr-v12';
+const VERSION = 'nr-v13';
 const FILES = [
   './',
   'index.html',

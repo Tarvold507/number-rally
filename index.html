@@ -437,8 +437,8 @@ function deleteKid(id){delete kids[id];markDirty(id);saveLocal();scheduleSync()}
 /* ---------- family sync ---------- */
 // Family sync uses Supabase. Fill in the project URL and the publishable (anon) key.
 // Both are safe to publish: the table is locked and only the nr_* functions are callable.
-const SUPA_URL='';
-const SUPA_KEY='';
+const SUPA_URL='https://ajdvoddjxkspbqzdammm.supabase.co';
+const SUPA_KEY='sb_publishable_jBx7ZrfxIo5rXgXzwqMDGA_UfiFePNo';
 const SYNC_URL=SUPA_URL&&SUPA_KEY?SUPA_URL.replace(/\/+$/,''):'';
 function rpc(name,args,keepalive){
   const h={'Content-Type':'application/json','apikey':SUPA_KEY};
