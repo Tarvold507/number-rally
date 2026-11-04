@@ -152,7 +152,8 @@ button{font:inherit;color:inherit}
 .key{font-family:var(--body);font-weight:800;font-size:2rem;border:2px solid var(--line);border-radius:18px;background:var(--card);color:var(--ink);
   min-height:72px;box-shadow:0 5px 0 var(--shadow);cursor:pointer;touch-action:manipulation;user-select:none;-webkit-user-select:none}
 .key:active,.key.hit{transform:translateY(4px);box-shadow:0 1px 0 var(--shadow)}
-.key.go{background:var(--mint);border-color:var(--mint);color:var(--card)}
+.key.go{background:var(--mint);border-color:var(--mint);color:var(--card);display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1;gap:2px}
+.key.go small{font-size:.8rem;letter-spacing:.06em;text-transform:uppercase}
 .key.back{color:var(--ink-soft);font-size:1.6rem}
 .key.minus{grid-column:1/-1;min-height:52px;font-size:1.6rem}
 
@@ -359,7 +360,7 @@ function applyBackup(list){
 /* ---------- kid model ---------- */
 function newKid(name,avatar,lv){
   return {id:'k'+Date.now().toString(36)+Math.random().toString(36).slice(2,6),name,avatar,created:Date.now(),updated:Date.now(),
-    settings:Object.assign({ops:['add'],addMax:10,neg:false,mulMax:10,tables:[],practiceLen:20,sheetLen:20,clockMin:1,auto:true},clone(LEVELS[lv].s)),
+    settings:Object.assign({ops:['add'],addMax:10,neg:false,mulMax:10,tables:[],practiceLen:20,sheetLen:20,clockMin:1},clone(LEVELS[lv].s)),
     stars:0,racer:'🚗',raceLevel:1,totals:{add:[0,0,0],sub:[0,0,0],mul:[0,0,0],div:[0,0,0]},facts:{},days:{},sessions:[],bests:{},badges:{}};
 }
 function attempts(k){return sum(Object.values(k.totals).map(t=>t[0]+t[1]))}
@@ -563,8 +564,6 @@ function Settings(){
       <div class="panel field"><span class="label">Practice length</span>${seg('practiceLen',[10,20,30],s.practiceLen,v=>v+' problems')}
         <span class="label">Worksheet size</span>${seg('sheetLen',[12,20,30],s.sheetLen,v=>v+' problems')}
         <span class="label">Beat the Clock</span>${seg('clockMin',[1,2,3],s.clockMin,v=>v+' min')}</div>
-      <div class="panel field"><span class="label">Answering</span>${tog('auto',s.auto,'Check automatically when enough digits are typed')}
-        <p class="muted">Turn this off if you want your kid to press the green check after each answer.</p></div>
       <div class="panel field"><span class="label">Player</span><input type="text" id="sname" maxlength="16" value="${esc(k.name)}" aria-label="Player name">
         <div class="avatars">${AVATARS.map(x=>`<button class="avbtn ${x===k.avatar?'on':''}" data-act="setav" data-v="${x}" aria-label="Avatar ${x}">${x}</button>`).join('')}</div></div>
     </div></div>`;
@@ -610,7 +609,7 @@ function Play(){
       <div class="keypad" id="pad">
         ${neg?'<button class="key minus" data-key="-">− (below zero)</button>':''}
         ${[7,8,9,4,5,6,1,2,3].map(n=>`<button class="key" data-key="${n}">${n}</button>`).join('')}
-        <button class="key back" data-key="back" aria-label="Erase">⌫</button><button class="key" data-key="0">0</button><button class="key go" data-key="go" aria-label="Check">✓</button>
+        <button class="key back" data-key="back" aria-label="Erase">⌫</button><button class="key" data-key="0">0</button><button class="key go" data-key="go" aria-label="Enter to check"><span class="gk">✓</span><small>Enter</small></button>
       </div>
     </div></div>`;
 }
@@ -643,7 +642,6 @@ function key(k){
   if(k==='-'){r.typed=r.typed.startsWith('-')?r.typed.slice(1):'-'+r.typed;sfx.tap();drawPlay();return}
   if(r.typed.replace('-','').length>=5)return;
   r.typed+=k;sfx.tap();drawPlay();
-  if(kid.settings.auto&&r.typed.length>=String(r.cur.ans).length)setTimeout(()=>{if(run===r&&!r.lock)submit()},120);
 }
 function submit(){
   const r=run;if(!r||r.typed===''||r.typed==='-'||r.lock)return;
@@ -733,7 +731,7 @@ function Sheet(){
         <div class="keypad" id="pad">
           ${neg?'<button class="key minus" data-key="-">− (below zero)</button>':''}
           ${[7,8,9,4,5,6,1,2,3].map(n=>`<button class="key" data-key="${n}">${n}</button>`).join('')}
-          <button class="key back" data-key="back" aria-label="Erase">⌫</button><button class="key" data-key="0">0</button><button class="key go" data-key="go" aria-label="Next problem">↵</button>
+          <button class="key back" data-key="back" aria-label="Erase">⌫</button><button class="key" data-key="0">0</button><button class="key go" data-key="go" aria-label="Enter, next problem"><span class="gk">↵</span><small>Next</small></button>
         </div>
         ${r.warn&&blanks?`<div class="panel" style="text-align:center"><b>${blanks} left blank.</b> Check anyway?<div class="row" style="justify-content:center;margin-top:8px"><button class="btn primary" data-act="grade" data-v="force">Yes, check it</button><button class="btn" data-act="nowarn">Keep going</button></div></div>`:`<button class="btn blue big" data-act="grade">Check my sheet</button>`}
       </div>`}
@@ -745,10 +743,7 @@ function sheetKey(k){
   if(k==='back')r.typed[i]=r.typed[i].slice(0,-1);
   else if(k==='go'){const nx=nextBlank(i);r.sel=nx<0?i:nx}
   else if(k==='-')r.typed[i]=r.typed[i].startsWith('-')?r.typed[i].slice(1):'-'+r.typed[i];
-  else if(r.typed[i].replace('-','').length<5){
-    r.typed[i]+=k;
-    if(kid.settings.auto&&r.typed[i].length>=String(r.probs[i].ans).length){const nx=nextBlank(i);if(nx>=0)r.sel=nx}
-  }
+  else if(r.typed[i].replace('-','').length<5)r.typed[i]+=k;
   sfx.tap();r.warn=false;render();
   const sel=$app.querySelector('.cell.sel');if(sel)sel.scrollIntoView({block:'nearest',behavior:'smooth'});
 }
