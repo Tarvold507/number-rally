@@ -167,7 +167,7 @@ button{font:inherit;color:inherit}
   background:repeating-conic-gradient(var(--ink) 0 25%,var(--card) 0 50%) 0 0/8px 8px;opacity:.75}
 
 /* worksheet */
-.sheet{display:grid;grid-template-columns:repeat(auto-fill,minmax(118px,1fr));gap:10px}
+.sheet{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px}
 .cell{background:var(--card);border:2px solid var(--line);border-radius:16px;padding:12px 14px 10px;display:grid;justify-items:end;cursor:pointer;position:relative;--sz:2rem;text-align:right}
 .cell.sel{border-color:var(--sky);box-shadow:0 0 0 3px color-mix(in srgb,var(--sky) 30%,transparent)}
 .cell .num{position:absolute;left:10px;top:8px;font-size:.75rem;font-weight:700;color:var(--ink-soft)}
@@ -249,6 +249,25 @@ input[type=text]:focus-visible{outline:3px solid var(--sky);outline-offset:1px}
 .toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--paper);padding:.6em 1.1em;border-radius:14px;font-weight:700;z-index:50}
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 [hidden]{display:none!important}
+.eq{display:flex;flex-wrap:wrap;align-items:center;align-content:center;justify-content:center;gap:.3em;font-weight:800;font-size:min(calc(var(--sz,5rem)*.62),9vw);line-height:1.15;font-variant-numeric:tabular-nums}
+.box{display:inline-flex;align-items:center;justify-content:center;min-width:1.5em;min-height:1.15em;padding:0 .14em;border:.06em dashed var(--line);border-radius:.18em;text-align:center}
+.cmpbox{min-width:1.2em}
+.qa{display:flex;flex-direction:column;align-items:center;gap:.3em;justify-self:stretch;max-width:100%}
+.prompt{font-size:max(.85rem,calc(var(--sz,5rem)*.26));font-weight:700;color:var(--ink-soft);text-align:center}
+.prompt b{font-weight:800}
+.bignum{font-weight:800;font-size:calc(var(--sz,5rem)*.85);line-height:1;font-variant-numeric:tabular-nums;letter-spacing:.03em}
+.ansline{font-weight:800;font-size:calc(var(--sz,5rem)*.62);display:flex;align-items:center;gap:.3em;font-variant-numeric:tabular-nums}
+.ansline .sym{color:var(--ink-soft)}
+.pv0,.pv3{color:var(--mint)}.pv1{color:var(--sky)}.pv2{color:var(--redpen)}
+.tgt{text-decoration:underline;text-decoration-thickness:.08em;text-underline-offset:.12em}
+.clock{width:calc(var(--sz,5rem)*3);max-width:100%;height:auto;display:block}
+.coins{display:flex;flex-wrap:wrap;gap:.3em;justify-content:center;align-items:center;font-size:calc(var(--sz,5rem)*.42);max-width:100%}
+.coins svg{height:auto;display:block;flex:none}
+.key.cmpk{font-size:2.6rem;min-height:92px}
+.key.minus{font-size:1.25rem}
+.cell .qa,.cell .eq{justify-self:stretch}
+.cell .eq{font-size:1rem;gap:.25em}
+.cell{padding-top:26px}
 .levelup{display:flex;flex-direction:column;align-items:center;gap:6px;text-align:center;border-color:var(--pencil);background:color-mix(in srgb,var(--pencil) 18%,var(--card));max-width:560px;width:100%}
 .levelup .lvl{font-weight:800;letter-spacing:.14em;font-size:.8rem;background:var(--pencil);color:var(--on-pencil);padding:.2em .7em;border-radius:999px}
 .grow{display:flex;flex-direction:column;gap:10px;border-top:2px solid var(--line);padding-top:12px}
@@ -303,6 +322,12 @@ const BADGES=[
   {id:'allops',g:'+×',n:'All Four',d:'Try + − × and ÷'}
 ];
 const RACE_TARGET=12;
+const EXTRAS={miss:'? Missing number',cmp:'< > Compare',round:'≈ Rounding',place:'Place value',time:'Telling time',money:'Money'};
+const KIND_LABEL={add:'+ Adding',sub:'− Taking away',mul:'× Times',div:'÷ Dividing',miss:'? Missing number',cmp:'< > Compare',round:'≈ Rounding',place:'Place value',time:'Telling time',money:'Money'};
+const ALL_KINDS=Object.keys(KIND_LABEL);
+const TIME_LV=['Hour','Half hour','Quarter hour','5 minutes','Any minute'];
+const MONEY_LV=['Pennies, nickels & dimes','Add quarters (under $1)','Add dollars (up to $10)'];
+const DEF_SETTINGS={ops:['add'],extras:[],addMax:10,neg:false,mulMax:10,tables:[],rem:false,placeMax:100,timeLevel:2,moneyLevel:1,practiceLen:20,sheetLen:20,clockMin:1};
 const ICONS={
   practice:'<svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round"><circle cx="24" cy="24" r="19"/><circle cx="24" cy="24" r="11"/><circle cx="24" cy="24" r="3" fill="currentColor"/></svg>',
   clock:'<svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round"><circle cx="24" cy="27" r="17"/><path d="M24 27V17M19 5h10M24 5v5M37 12l3-3"/></svg>',
@@ -325,7 +350,7 @@ const LS='numberRally.v1';
 let kids={};
 let prefs={sound:true,lastBackup:0,tipHidden:false};
 function loadLocal(){try{const t=localStorage.getItem(LS);if(t){const o=JSON.parse(t);kids=o.kids||{};prefs=Object.assign(prefs,o.prefs||{})}}catch(e){}
-  Object.values(kids).forEach(adapt)}
+  Object.values(kids).forEach(migrate)}
 let saveFailed=false;
 function saveLocal(){try{localStorage.setItem(LS,JSON.stringify({kids,prefs}));saveFailed=false}catch(e){if(!saveFailed){saveFailed=true;toast('Progress could not be saved on this tablet. Check that storage is not full.')}}}
 function saveKid(k){k.updated=Date.now();saveLocal()}
@@ -364,7 +389,7 @@ function parseBackup(text){
 }
 function applyBackup(list){
   let added=0,replaced=0;
-  list.forEach(k=>{if(kids[k.id])replaced++;else added++;k.updated=Date.now();kids[k.id]=k});
+  list.forEach(k=>{if(kids[k.id])replaced++;else added++;migrate(k);k.updated=Date.now();kids[k.id]=k});
   saveLocal();
   return 'Restored '+list.length+' player'+(list.length>1?'s':'')+(replaced?' ('+replaced+' replaced, '+added+' added)':'')+'.';
 }
@@ -372,8 +397,14 @@ function applyBackup(list){
 /* ---------- kid model ---------- */
 function newKid(name,avatar,lv){
   return {id:'k'+Date.now().toString(36)+Math.random().toString(36).slice(2,6),name,avatar,created:Date.now(),updated:Date.now(),
-    settings:Object.assign({ops:['add'],addMax:10,neg:false,mulMax:10,tables:[],practiceLen:20,sheetLen:20,clockMin:1},clone(LEVELS[lv].s)),
-    stars:0,racer:'🚗',raceLevel:1,totals:{add:[0,0,0],sub:[0,0,0],mul:[0,0,0],div:[0,0,0]},facts:{},days:{},sessions:[],bests:{},badges:{}};
+    settings:Object.assign(clone(DEF_SETTINGS),clone(LEVELS[lv].s)),
+    stars:0,racer:'🚗',raceLevel:1,totals:Object.fromEntries(ALL_KINDS.map(x=>[x,[0,0,0]])),facts:{},days:{},sessions:[],bests:{},badges:{}};
+}
+function migrate(k){
+  k.settings=Object.assign(clone(DEF_SETTINGS),k.settings||{});
+  if(!Array.isArray(k.settings.extras))k.settings.extras=[];
+  k.totals=k.totals||{};ALL_KINDS.forEach(x=>{if(!k.totals[x])k.totals[x]=[0,0,0]});
+  adapt(k);return k;
 }
 function attempts(k){return sum(Object.values(k.totals).map(t=>t[0]+t[1]))}
 function rights(k){return sum(Object.values(k.totals).map(t=>t[0]))}
@@ -386,24 +417,88 @@ function streak(k){
 function mathSummary(s){
   const out=[];
   if(s.ops.includes('add')||s.ops.includes('sub'))out.push((s.ops.includes('add')?'+':'')+(s.ops.includes('sub')?' −':'')+' up to '+s.addMax);
-  if(s.ops.includes('mul')||s.ops.includes('div'))out.push((s.ops.includes('mul')?'×':'')+(s.ops.includes('div')?' ÷':'')+(s.tables.length?' tables '+s.tables.join(', '):' up to '+s.mulMax));
+  if(s.ops.includes('mul')||s.ops.includes('div'))out.push((s.ops.includes('mul')?'×':'')+(s.ops.includes('div')?' ÷':'')+(s.tables.length?' tables '+s.tables.join(', '):' up to '+s.mulMax)+(s.ops.includes('div')&&s.rem?' with remainders':''));
+  const ex=s.extras||[];
+  if(ex.includes('miss'))out.push('Missing numbers');
+  const pv=['cmp','round','place'].filter(x=>ex.includes(x)).map(x=>({cmp:'Compare',round:'Rounding',place:'Place value'})[x]);
+  if(pv.length)out.push(pv.join(', ')+' to '+s.placeMax.toLocaleString('en-US'));
+  if(ex.includes('time'))out.push('Time: '+TIME_LV[s.timeLevel-1].toLowerCase());
+  if(ex.includes('money'))out.push('Money: '+MONEY_LV[s.moneyLevel-1].toLowerCase());
   return out.map(x=>x.trim());
 }
 
 /* ---------- problems ---------- */
 function mk(a,op,b){
   const ans=op==='add'?a+b:op==='sub'?a-b:op==='mul'?a*b:a/b;
-  return {a,b,op,ans,key:a+OPS[op].k+b,track:(op==='add'||op==='sub')?(a<=20&&b<=20):true};
+  return {kind:op,input:'num',a,b,op,ans,ansText:String(ans),key:a+OPS[op].k+b,track:(op==='add'||op==='sub')?(a<=20&&b<=20):true};
 }
-function fresh(s){
-  const op=pick(s.ops);
+function mkRem(d,q,r){
+  const a=d*q+r;
+  return {kind:'div',input:'rem',a,b:d,op:'div',ans:{q,r},ansText:r?q+' R '+r:String(q),key:a+'d'+d,track:r===0};
+}
+function fresh(s,op,noRem){
+  op=op||pick(s.ops.length?s.ops:['add']);
   if(op==='add')return mk(ri(0,s.addMax),'add',ri(0,s.addMax));
   if(op==='sub'){let a=ri(0,s.addMax),b=ri(0,s.addMax);if(!s.neg&&a<b)[a,b]=[b,a];return mk(a,'sub',b)}
   const tb=s.tables&&s.tables.length?s.tables:null;
   if(op==='mul'){const t=tb?pick(tb):ri(1,s.mulMax),o=ri(Math.random()<.08?0:1,s.mulMax);return Math.random()<.5?mk(t,'mul',o):mk(o,'mul',t)}
   const d=tb?pick(tb):ri(1,s.mulMax),q=ri(Math.random()<.08?0:1,s.mulMax);
+  if(s.rem&&!noRem)return mkRem(d,q,d>1&&Math.random()<.6?ri(1,d-1):0);
   return mk(d*q,'div',d);
 }
+/* ----- more skills ----- */
+function makeMiss(s){
+  let base=s.ops.length?s:Object.assign({},s,{ops:['add'],addMax:Math.min(s.addMax||20,20)});
+  for(let i=0;i<30;i++){
+    const op=pick(base.ops),p=fresh(base,op,true),L=Math.random()<.5;let parts,ans;
+    if(op==='add'){parts=L?[null,'+',p.b,'=',p.ans]:[p.a,'+',null,'=',p.ans];ans=L?p.a:p.b}
+    else if(op==='sub'){parts=L?[null,'−',p.b,'=',p.ans]:[p.a,'−',null,'=',p.ans];ans=L?p.a:p.b}
+    else if(op==='mul'){if(!p.a||!p.b)continue;parts=L?[null,'×',p.b,'=',p.ans]:[p.a,'×',null,'=',p.ans];ans=L?p.a:p.b}
+    else{if(!p.ans)continue;parts=L?[null,'÷',p.b,'=',p.ans]:[p.a,'÷',null,'=',p.ans];ans=L?p.a:p.b}
+    return {kind:'miss',input:'num',parts,ans,ansText:String(ans),key:'x'+parts.join(','),track:false};
+  }
+  return mk(2,'add',3);
+}
+function makeCmp(s){
+  const max=s.placeMax,a=ri(0,max);let b,r=Math.random();
+  if(r<.25)b=a;
+  else if(r<.65&&a>=10){const d=String(a).split(''),i=ri(0,d.length-1);let nd;do{nd=ri(i===0?1:0,9)}while(String(nd)===d[i]);d[i]=String(nd);b=+d.join('')}
+  else b=ri(0,max);
+  const ans=a<b?'<':a>b?'>':'=';
+  return {kind:'cmp',input:'cmp',a,b,ans,ansText:ans,key:'c'+a+'-'+b,track:false};
+}
+function makeRound(s){
+  const places=[10,100,1000].filter(v=>v<s.placeMax),place=pick(places);let n;
+  for(let i=0;i<20;i++){n=ri(place,s.placeMax-1);if(n%place)break}
+  const ans=Math.round(n/place)*place;
+  return {kind:'round',input:'num',n,place,ans,ansText:String(ans),key:'r'+n+'-'+place,track:false};
+}
+function makePlace(s){
+  const lo=s.placeMax/10,hi=s.placeMax-1;
+  for(let i=0;i<50;i++){
+    const n=ri(lo,hi),str=String(n),ok=[];
+    for(let j=0;j<str.length;j++)if(str[j]!=='0'&&str.split(str[j]).length===2)ok.push(j);
+    if(!ok.length)continue;
+    const j=pick(ok),d=+str[j],pos=str.length-1-j,ans=d*Math.pow(10,pos);
+    return {kind:'place',input:'num',n,j,d,ans,ansText:String(ans),key:'p'+n+'-'+j,track:false};
+  }
+  return {kind:'place',input:'num',n:47,j:0,d:4,ans:40,ansText:'40',key:'p47-0',track:false};
+}
+function makeTime(s){
+  const lv=s.timeLevel||2,h=ri(1,12),ms=[[0],[0,30],[0,15,30,45],Array.from({length:12},(_,i)=>i*5),Array.from({length:60},(_,i)=>i)][lv-1],m=pick(ms);
+  return {kind:'time',input:'time',h,m,lv,ans:{h,m},ansText:h+':'+pad2(m),key:'t'+h+':'+m,track:false};
+}
+function makeMoney(s){
+  const lv=s.moneyLevel||1,set=lv===1?[10,5,1]:lv===2?[25,10,5,1]:[500,100,25,10,5,1],max=lv===1?50:lv===2?99:1000;
+  for(let i=0;i<200;i++){
+    const n=ri(2,lv===3?7:6),cs=[];for(let j=0;j<n;j++)cs.push(pick(set));
+    const tot=sum(cs);if(tot>max||(lv===3&&!cs.some(c=>c>=100)))continue;
+    cs.sort((a,b)=>b-a);
+    return {kind:'money',input:lv<3?'cents':'money',coins:cs,ans:tot,ansText:lv<3?tot+'¢':'$'+(tot/100).toFixed(2),key:'m'+cs.join('-'),track:false};
+  }
+  return {kind:'money',input:'cents',coins:[10,5],ans:15,ansText:'15¢',key:'m10-5',track:false};
+}
+function makeExtra(s,kind){return ({miss:makeMiss,cmp:makeCmp,round:makeRound,place:makePlace,time:makeTime,money:makeMoney})[kind](s)}
 function fits(s,a,op,b){
   if(!s.ops.includes(op))return false;
   const tb=s.tables||[];
@@ -413,20 +508,77 @@ function fits(s,a,op,b){
   if(b===0)return false;
   const q=a/b;return tb.length?(tb.includes(b)&&q<=s.mulMax):(b<=s.mulMax&&q<=s.mulMax);
 }
-function weakPick(k){
+function weakPick(k,only){
   const c=[];
   for(const key in k.facts){
     const f=k.facts[key],n=f[0]+f[1];if(!n)continue;
     if(!(f[1]/n>.2||f[2]/n>7000))continue;
     const m=/^(\d+)([asmd])(\d+)$/.exec(key);if(!m)continue;
     const a=+m[1],op=K2OP[m[2]],b=+m[3];
-    if(fits(k.settings,a,op,b))c.push(mk(a,op,b));
+    if(only&&op!==only)continue;
+    if(fits(k.settings,a,op,b))c.push(op==='div'&&k.settings.rem?mkRem(b,a/b,0):mk(a,op,b));
   }
   return c.length?pick(c):null;
 }
 function gen(k,last){
-  for(let i=0;i<20;i++){const p=(Math.random()<.3&&weakPick(k))||fresh(k.settings);if(p.key!==last)return p}
-  return fresh(k.settings);
+  const s=k.settings,ks=s.ops.concat(s.extras||[]);if(!ks.length)ks.push('add');
+  let p;
+  for(let i=0;i<20;i++){
+    const kind=pick(ks);
+    p=OPS[kind]?((Math.random()<.3&&weakPick(k,kind))||fresh(s,kind)):makeExtra(s,kind);
+    if(p.key!==last)return p;
+  }
+  return p;
+}
+/* ----- answers ----- */
+function checkAns(p,t){
+  t=String(t||'');
+  if(p.input==='cmp')return t===p.ans;
+  if(p.input==='rem'){const m=/^(\d+)(?:R(\d*))?$/.exec(t);return !!m&&+m[1]===p.ans.q&&+(m[2]||0)===p.ans.r}
+  if(p.input==='time'){let h,mm;if(t.includes(':')){const z=t.split(':');if(!z[0]||z[1].length!==2)return false;h=+z[0];mm=+z[1]}else{if(t.length<3)return false;h=+t.slice(0,-2);mm=+t.slice(-2)}return h===p.ans.h&&mm===p.ans.m}
+  if(p.input==='money'){if(!/^\d*\.?\d{0,2}$/.test(t)||!/\d/.test(t))return false;return Math.round(parseFloat(t)*100)===p.ans}
+  return /^-?\d+$/.test(t)&&parseInt(t,10)===p.ans;
+}
+const isBlank=t=>t===''||t==='-';
+function applyKey(p,t,k){
+  if(k==='back')return t.slice(0,-1);
+  if(p.input==='cmp')return '<=>'.includes(k)?k:t;
+  if(k==='-')return p.input==='num'?(t.startsWith('-')?t.slice(1):'-'+t):t;
+  if(k==='R')return p.input==='rem'&&/^\d+$/.test(t)?t+'R':t;
+  if(k===':')return p.input==='time'&&/^\d{1,2}$/.test(t)?t+':':t;
+  if(k==='.')return p.input==='money'&&!t.includes('.')?(t||'0')+'.':t;
+  if(!/^\d$/.test(k))return t;
+  const digits=t.replace(/\D/g,'').length;
+  if(p.input==='time'&&(t.includes(':')?t.split(':')[1].length>=2:digits>=4))return t;
+  if(p.input==='money'&&t.includes('.')&&t.split('.')[1].length>=2)return t;
+  if(digits>=5)return t;
+  return t+k;
+}
+function fmtTyped(p,t){if(t==='')return '';if(p.input==='rem')return t.replace('R',' R ');if(p.input==='cents')return t+'¢';if(p.input==='money')return '$'+t;return t}
+function padHTML(p,sheet){
+  const go=sheet?'<button class="key go" data-key="go" aria-label="Enter, next problem"><span class="gk">↵</span><small>Next</small></button>':'<button class="key go" data-key="go" aria-label="Enter to check"><span class="gk">✓</span><small>Enter</small></button>';
+  const back='<button class="key back" data-key="back" aria-label="Erase">⌫</button>';
+  if(p.input==='cmp')return `<button class="key cmpk" data-key="&lt;" aria-label="Less than">&lt;</button><button class="key cmpk" data-key="=" aria-label="Equal to">=</button><button class="key cmpk" data-key="&gt;" aria-label="Greater than">&gt;</button>${back}<span></span>${go}`;
+  const neg=kid.settings.neg&&kid.settings.ops.includes('sub')&&p.input==='num';
+  const extra={rem:['R','R (remainder)'],time:[':',': (colon)'],money:['.','. (dot)']}[p.input]||(neg?['-','− (below zero)']:null);
+  return (extra?`<button class="key minus" data-key="${extra[0]}">${extra[1]}</button>`:'')+[7,8,9,4,5,6,1,2,3].map(n=>`<button class="key" data-key="${n}">${n}</button>`).join('')+back+'<button class="key" data-key="0">0</button>'+go;
+}
+const padSig=(p,sheet)=>p.input+(kid.settings.neg&&kid.settings.ops.includes('sub')?'n':'')+(sheet?'s':'');
+/* ----- drawings ----- */
+function clockSVG(h,m,lv){
+  const P=(r,a)=>[(50+r*Math.sin(a)).toFixed(2),(50-r*Math.cos(a)).toFixed(2)];
+  let o='<svg class="clock" viewBox="0 0 100 100" aria-hidden="true"><circle cx="50" cy="50" r="46" style="fill:var(--card);stroke:var(--ink)" stroke-width="3"/>';
+  for(let i=0;i<60;i++){const big=i%5===0;if(!big&&lv<4)continue;const a=i*Math.PI/30,p1=P(big?40:42,a),p2=P(44.5,a);o+=`<line x1="${p1[0]}" y1="${p1[1]}" x2="${p2[0]}" y2="${p2[1]}" style="stroke:var(--ink)" stroke-width="${big?2:1}" stroke-linecap="round"/>`}
+  for(let n=1;n<=12;n++){const q=P(30.5,n*Math.PI/6);o+=`<text x="${q[0]}" y="${(+q[1]+3.4).toFixed(2)}" text-anchor="middle" font-size="9.5" font-weight="800" style="fill:var(--ink)">${n}</text>`}
+  const hp=P(19,((h%12)+m/60)*Math.PI/6),mp=P(33,m*Math.PI/30);
+  o+=`<line x1="50" y1="50" x2="${hp[0]}" y2="${hp[1]}" style="stroke:var(--ink)" stroke-width="5.5" stroke-linecap="round"/><line x1="50" y1="50" x2="${mp[0]}" y2="${mp[1]}" style="stroke:var(--sky)" stroke-width="3.2" stroke-linecap="round"/><circle cx="50" cy="50" r="3.2" style="fill:var(--ink)"/></svg>`;
+  return o;
+}
+const COIN={1:[1.9,'#C9824F','#99582E','1¢'],5:[2.15,'#CDD3DB','#8E98A5','5¢'],10:[1.8,'#CDD3DB','#8E98A5','10¢'],25:[2.4,'#CDD3DB','#8E98A5','25¢']};
+function coinSVG(v){
+  if(v>=100)return `<svg viewBox="0 0 88 40" style="width:4.4em" role="img" aria-label="${v/100} dollar bill"><rect x="1.5" y="1.5" width="85" height="37" rx="4" fill="#BFDDB4" stroke="#5E8C55" stroke-width="3"/><rect x="8" y="7" width="72" height="26" rx="3" fill="none" stroke="#5E8C55" stroke-width="1.5"/><text x="44" y="27" text-anchor="middle" font-size="17" font-weight="800" fill="#1D3B22">$${v/100}</text></svg>`;
+  const c=COIN[v];
+  return `<svg viewBox="0 0 40 40" style="width:${c[0]}em" role="img" aria-label="${v} cent coin"><circle cx="20" cy="20" r="18.5" fill="${c[1]}" stroke="${c[2]}" stroke-width="3"/><circle cx="20" cy="20" r="14.5" fill="none" stroke="${c[2]}" stroke-width="1" opacity=".55"/><text x="20" y="24.5" text-anchor="middle" font-size="${c[3].length>2?11:13}" font-weight="800" fill="#1D2B4F">${c[3]}</text></svg>`;
 }
 /* ---------- grow with me (automatic difficulty) ---------- */
 const WINDOW=50, NEED_ACC=.9;
@@ -436,7 +588,7 @@ function resetAdapt(k){const a=adapt(k);a.as=[];a.md=[]}
 const trackOf=op=>(op==='add'||op==='sub')?'as':'md';
 const hasAS=s=>s.ops.includes('add')||s.ops.includes('sub');
 const hasMD=s=>s.ops.includes('mul')||s.ops.includes('div');
-function speedLimit(s,tr){return tr==='md'?5000:s.addMax<=10?4000:s.addMax<=20?5000:8000}
+function speedLimit(s,tr){return tr==='md'?5000:s.addMax<=10?4000:s.addMax<=20?5000:s.addMax<=100?8000:15000}
 function median(a){const b=a.slice().sort((x,y)=>x-y),m=b.length>>1;return b.length%2?b[m]:(b[m-1]+b[m])/2}
 function readiness(k,tr){
   const w=adapt(k)[tr],n=w.length,acc=n?sum(w.map(x=>x[0]))/n:0,med=n?median(w.map(x=>x[1])):0;
@@ -446,9 +598,9 @@ function nextStep(s,tr){
   if(tr==='as'){
     if(!hasAS(s))return null;
     if(!s.ops.includes('sub')&&s.ops.includes('add')&&s.addMax>=10)return {kid:'Taking away unlocked!',grown:'Taking away (−)',go:x=>{x.ops.push('sub')}};
-    const L=[5,10,20,50,100],nx=L.find(v=>v>s.addMax);
+    if(s.ops.includes('sub')&&s.addMax>=100&&!hasMD(s))return {kid:'Times tables unlocked!',grown:'Times tables: 2s, 5s and 10s',go:x=>{x.ops.push('mul');x.tables=[2,5,10];x.mulMax=10}};
+    const L=[5,10,20,50,100,1000],nx=L.find(v=>v>s.addMax);
     if(nx)return {kid:'Bigger numbers: up to '+nx+'!',grown:'Numbers up to '+nx,go:x=>{x.addMax=nx}};
-    if(s.ops.includes('sub')&&!hasMD(s))return {kid:'Times tables unlocked!',grown:'Times tables: 2s, 5s and 10s',go:x=>{x.ops.push('mul');x.tables=[2,5,10];x.mulMax=10}};
     return null;
   }
   if(!hasMD(s))return null;
@@ -478,19 +630,42 @@ function tryGrow(k){
 }
 function record(k,p,ok,ms){
   ms=Math.min(ms,30000);
-  {const w=adapt(k)[trackOf(p.op)];w.push([ok?1:0,Math.round(ms)]);if(w.length>WINDOW)w.shift()}
-  const t=k.totals[p.op];t[ok?0:1]++;t[2]+=ms;
+  if(OPS[p.kind]){const w=adapt(k)[trackOf(p.kind)];w.push([ok?1:0,Math.round(ms)]);if(w.length>WINDOW)w.shift()}
+  const t=k.totals[p.kind]||(k.totals[p.kind]=[0,0,0]);t[ok?0:1]++;t[2]+=ms;
   if(p.track){const f=k.facts[p.key]||(k.facts[p.key]=[0,0,0]);f[ok?0:1]++;f[2]+=Math.round(ms)}
   const dk=dayKey();k.days[dk]=(k.days[dk]||0)+1;
   if(ok)k.stars++;
 }
 function probHTML(p,typed,showAns){
-  const val=showAns!=null?showAns:typed;
-  const cls='ans'+(showAns==null&&val===''?' empty':'');
-  if(p.op==='div')return '<div class="ldiv" aria-label="'+p.a+' divided by '+p.b+'"><div class="q '+cls+'">'+esc(val)+'</div><div class="dvs">'+p.b+'</div><div class="dvd">'+p.a+'</div></div>';
-  return '<div class="stack" aria-label="'+p.a+' '+OPS[p.op].label+' '+p.b+'"><div>'+p.a+'</div><div class="oprow"><span class="op">'+OPS[p.op].sym+'</span><span>'+p.b+'</span></div><div class="bar"></div><div class="'+cls+'">'+esc(val)+'</div></div>';
+  const val=showAns!=null?showAns:typed,empty=showAns==null&&val==='',txt=esc(fmtTyped(p,val));
+  const cls='ans'+(empty?' empty':'');
+  const B=`<span class="${cls} box${p.input==='cmp'?' cmpbox':''}">${txt}</span>`;
+  switch(p.kind){
+    case 'div':return '<div class="ldiv" aria-label="'+p.a+' divided by '+p.b+'"><div class="q '+cls+'">'+txt+'</div><div class="dvs">'+p.b+'</div><div class="dvd">'+p.a+'</div></div>';
+    case 'add':case 'sub':case 'mul':return '<div class="stack" aria-label="'+p.a+' '+OPS[p.op].label+' '+p.b+'"><div>'+p.a+'</div><div class="oprow"><span class="op">'+OPS[p.op].sym+'</span><span>'+p.b+'</span></div><div class="bar"></div><div class="'+cls+'">'+txt+'</div></div>';
+    case 'miss':return `<div class="eq" aria-label="${esc(p.parts.map(x=>x===null?'blank':x).join(' '))}">${p.parts.map(x=>x===null?B:`<span>${esc(x)}</span>`).join('')}</div>`;
+    case 'cmp':return `<div class="eq" aria-label="Compare ${p.a} and ${p.b}"><span>${p.a}</span>${B}<span>${p.b}</span></div>`;
+    case 'round':return `<div class="qa" aria-label="Round ${p.n} to the nearest ${p.place}"><div class="prompt">Round to the nearest ${p.place}</div><div class="bignum">${p.n}</div><div class="ansline"><span class="sym">≈</span>${B}</div></div>`;
+    case 'place':{const str=String(p.n),L=str.length;return `<div class="qa" aria-label="What is the ${p.d} worth in ${p.n}"><div class="prompt">What is the <b class="pv${L-1-p.j}">${p.d}</b> worth?</div><div class="bignum">${str.split('').map((c,i)=>`<span class="pv${L-1-i}${i===p.j?' tgt':''}">${c}</span>`).join('')}</div><div class="ansline"><span class="sym">=</span>${B}</div></div>`}
+    case 'time':return `<div class="qa" aria-label="What time does the clock show"><div class="prompt">What time is it?</div>${clockSVG(p.h,p.m,p.lv)}<div class="ansline">${B}</div></div>`;
+    case 'money':return `<div class="qa" aria-label="How much money"><div class="prompt">How much money?</div><div class="coins">${p.coins.map(coinSVG).join('')}</div><div class="ansline">${B}</div></div>`;
+  }
+  return '';
 }
 const inline=p=>p.a+' '+OPS[p.op].sym+' '+p.b;
+function fullHTML(p){
+  const em=x=>'<em>'+esc(x)+'</em>';
+  switch(p.kind){
+    case 'miss':return p.parts.map(x=>x===null?em(p.ansText):esc(x)).join(' ');
+    case 'cmp':return p.a+' '+em(p.ans)+' '+p.b;
+    case 'round':return p.n+' ≈ '+em(p.ansText);
+    case 'place':return 'the '+p.d+' in '+p.n+' = '+em(p.ansText);
+    case 'time':return 'clock: '+em(p.ansText);
+    case 'money':return p.coins.map(c=>c>=100?'$'+c/100:c+'¢').join(' + ')+' = '+em(p.ansText);
+  }
+  return inline(p)+' = '+em(p.ansText);
+}
+const fixText=p=>p.input==='cmp'?p.a+' '+p.ans+' '+p.b:'= '+p.ansText;
 
 /* ---------- sound + confetti ---------- */
 let actx=null;
@@ -609,19 +784,28 @@ function seg(name,opts,cur,fmt){return `<div class="chips">${opts.map(o=>`<butto
 function tog(name,on,text){return `<button class="toggle ${on?'on':''}" data-act="tog" data-k="${name}" role="switch" aria-checked="${on}"><span class="sw"></span>${text}</button>`}
 function Settings(){
   const k=view.kid||kid,s=k.settings,back=view.from||'home';
-  const hasAS=s.ops.includes('add')||s.ops.includes('sub'),hasMD=s.ops.includes('mul')||s.ops.includes('div');
+  const hasAS=s.ops.includes('add')||s.ops.includes('sub'),hasMD=s.ops.includes('mul')||s.ops.includes('div'),ex=s.extras||[];
   return `<div class="screen">
     <div class="topbar"><button class="btn ghost" data-act="back" data-v="${back}">‹ Done</button><h2>Choose the math</h2><span style="width:60px"></span></div>
-    <div class="panel field"><span class="label">Which kinds of problems?</span>
+    <div class="panel field"><span class="label">Math facts</span>
       <div class="chips">${Object.entries(OPS).map(([o,v])=>`<button class="chip op ${s.ops.includes(o)?'on':''}" data-act="op" data-v="${o}" aria-label="${v.label}">${v.sym}</button>`).join('')}</div>
+      <span class="label" style="margin-top:8px">More skills</span>
+      <div class="chips">${Object.entries(EXTRAS).map(([x,label])=>`<button class="chip ${ex.includes(x)?'on':''}" data-act="extra" data-v="${x}">${esc(label)}</button>`).join('')}</div>
       <p class="muted">Pick one for focused practice, or several to mix them up.</p></div>
     <div class="settings-grid">
-      <div class="panel field" ${hasAS?'':'hidden'}><span class="label">Adding & taking away: numbers up to</span>${seg('addMax',[5,10,20,50,100],s.addMax)}
+      <div class="panel field" ${hasAS?'':'hidden'}><span class="label">Adding & taking away: numbers up to</span>${seg('addMax',[5,10,20,50,100,1000],s.addMax,v=>v.toLocaleString('en-US'))}
+        <p class="muted">Bigger numbers mean carrying and borrowing, like 347 + 285.</p>
         <div ${s.ops.includes('sub')?'':'hidden'}>${tog('neg',s.neg,'Allow answers below zero')}</div></div>
       <div class="panel field" ${hasMD?'':'hidden'}><span class="label">Times & dividing: tables up to</span>${seg('mulMax',[5,10,12],s.mulMax)}
         <span class="label" style="margin-top:6px">Only practice these tables</span>
         <div class="chips">${[1,2,3,4,5,6,7,8,9,10,11,12].map(t=>`<button class="chip ${s.tables.includes(t)?'on':''}" data-act="table" data-v="${t}">${t}</button>`).join('')}</div>
-        <p class="muted">${s.tables.length?'Only the '+s.tables.join(', ')+' table'+(s.tables.length>1?'s':'')+'.':'None picked means every table up to '+s.mulMax+'.'}</p></div>
+        <p class="muted">${s.tables.length?'Only the '+s.tables.join(', ')+' table'+(s.tables.length>1?'s':'')+'.':'None picked means every table up to '+s.mulMax+'.'}</p>
+        <div ${s.ops.includes('div')?'':'hidden'}>${tog('rem',s.rem,'Include remainders (answer like 7 R 3)')}</div></div>
+      <div class="panel field" ${ex.includes('miss')?'':'hidden'}><span class="label">Missing number</span><p class="muted">Uses the math facts picked above, like 8 + ? = 13 or 7 × ? = 56. With no facts picked, it uses adding within 20.</p></div>
+      <div class="panel field" ${['cmp','round','place'].some(x=>ex.includes(x))?'':'hidden'}><span class="label">Compare, rounding & place value: numbers up to</span>${seg('placeMax',[100,1000,10000],s.placeMax,v=>v.toLocaleString('en-US'))}
+        <p class="muted">Place value digits use the Montessori colors: green units, blue tens, red hundreds, green thousands.</p></div>
+      <div class="panel field" ${ex.includes('time')?'':'hidden'}><span class="label">Telling time: read the clock to the</span>${seg('timeLevel',[1,2,3,4,5],s.timeLevel,v=>TIME_LV[v-1])}</div>
+      <div class="panel field" ${ex.includes('money')?'':'hidden'}><span class="label">Money: count the coins</span>${seg('moneyLevel',[1,2,3],s.moneyLevel,v=>MONEY_LV[v-1])}</div>
       <div class="panel field"><span class="label">Grow with me</span>${(()=>{const on=adapt(k).on;return `<button class="toggle ${on?'on':''}" data-act="adapt" data-v="${k.id}" role="switch" aria-checked="${on}"><span class="sw"></span>Make it harder automatically</button>`})()}
         <p class="muted">After ${WINDOW} answers in a row at ${NEED_ACC*100}% right and a quick pace, the app takes one small step up, at most once a day. Changing the math here starts the count over.</p></div>
       <div class="panel field"><span class="label">Practice length</span>${seg('practiceLen',[10,20,30],s.practiceLen,v=>v+' problems')}
@@ -658,7 +842,7 @@ function nextProb(){
   r.t0=Date.now();
 }
 function Play(){
-  const r=run,k=kid,neg=k.settings.neg&&k.settings.ops.includes('sub');
+  const r=run,k=kid;
   const title={practice:'Practice',clock:'Beat the Clock',race:'Race Robo · Level '+r.level}[r.mode];
   return `<div class="screen">
     <div class="topbar"><button class="btn ghost" data-act="quit">✕ Stop</button>
@@ -669,18 +853,15 @@ function Play(){
         ${r.mode==='race'?`<div class="race" aria-label="Race track"><div class="lane"><span class="tagname">${esc(k.name)}</span><span class="who" id="me">${k.racer}</span><span class="finish"></span></div><div class="lane"><span class="tagname">Robo</span><span class="who robo" id="robo">🤖</span><span class="finish"></span></div></div>`:''}
         <div class="panel problem" id="pcard"></div>
       </div>
-      <div class="keypad" id="pad">
-        ${neg?'<button class="key minus" data-key="-">− (below zero)</button>':''}
-        ${[7,8,9,4,5,6,1,2,3].map(n=>`<button class="key" data-key="${n}">${n}</button>`).join('')}
-        <button class="key back" data-key="back" aria-label="Erase">⌫</button><button class="key" data-key="0">0</button><button class="key go" data-key="go" aria-label="Enter to check"><span class="gk">✓</span><small>Enter</small></button>
-      </div>
+      <div class="keypad" id="pad" data-sig="${padSig(r.cur,false)}">${padHTML(r.cur,false)}</div>
     </div></div>`;
 }
 function drawPlay(){
   const r=run;if(!r||screen!=='play')return;
   const c=document.getElementById('pcard');if(!c)return;
   c.className='panel problem'+(r.fb?' '+r.fb:'');
-  c.innerHTML=probHTML(r.cur,r.typed,r.fb==='bad'?r.typed:null)+(r.fb==='bad'?'<span class="redfix">= '+r.cur.ans+'</span>':'')+(r.fb==='ok'?'<span class="okmark">✓</span>':'');
+  c.innerHTML=probHTML(r.cur,r.typed,r.fb==='bad'?r.typed:null)+(r.fb==='bad'?'<span class="redfix">'+esc(fixText(r.cur))+'</span>':'')+(r.fb==='ok'?'<span class="okmark">✓</span>':'');
+  const pad=document.getElementById('pad'),sig=padSig(r.cur,false);if(pad&&pad.dataset.sig!==sig){pad.dataset.sig=sig;pad.innerHTML=padHTML(r.cur,false)}
   const mt=document.getElementById('mtext'),mf=document.getElementById('mfill');
   if(r.mode==='practice'){mt.textContent=Math.min(r.i+1,r.total)+' / '+r.total;mf.style.width=(r.i/r.total*100)+'%'}
   if(r.mode==='race'){document.getElementById('me').style.setProperty('--p',Math.min(1,r.right/RACE_TARGET));mf.style.width=(r.right/RACE_TARGET*100)+'%';mt.textContent=r.right+' / '+RACE_TARGET}
@@ -700,15 +881,13 @@ function updateClock(){
 }
 function key(k){
   const r=run;if(!r||r.lock||r.done)return;
-  if(k==='back'){r.typed=r.typed.slice(0,-1);sfx.tap();drawPlay();return}
   if(k==='go'){submit();return}
-  if(k==='-'){r.typed=r.typed.startsWith('-')?r.typed.slice(1):'-'+r.typed;sfx.tap();drawPlay();return}
-  if(r.typed.replace('-','').length>=5)return;
-  r.typed+=k;sfx.tap();drawPlay();
+  const nt=applyKey(r.cur,r.typed,k);
+  if(nt!==r.typed){r.typed=nt;sfx.tap();drawPlay()}
 }
 function submit(){
-  const r=run;if(!r||r.typed===''||r.typed==='-'||r.lock)return;
-  const ok=parseInt(r.typed,10)===r.cur.ans;
+  const r=run;if(!r||isBlank(r.typed)||r.lock)return;
+  const ok=checkAns(r.cur,r.typed);
   record(kid,r.cur,ok,Date.now()-r.t0);
   r.lock=true;r.fb=ok?'ok':'bad';
   if(ok){r.right++;sfx.ok()}else{r.wrong++;sfx.bad();r.missed.push(r.cur);if(r.mode==='practice')r.retry.push({p:r.cur,at:r.i+3})}
@@ -754,7 +933,7 @@ function endSession(k,s){
   earn('speedy',s.mode==='clock'&&s.right/s.clockMin>=15);
   earn('racer',!!s.won);earn('champ',!!s.won&&s.level>=5);
   earn('streak3',st>=3);earn('streak7',st>=7);
-  earn('allops',Object.values(k.totals).every(t=>t[0]+t[1]>0));
+  earn('allops',['add','sub','mul','div'].every(o=>k.totals[o]&&k.totals[o][0]+k.totals[o][1]>0));
   nb.up=tryGrow(k);
   saveKid(k);
   return nb;
@@ -770,7 +949,7 @@ function Result(){
     ${res.bonus?'<p class="muted">Includes a '+res.bonus+'-star bonus.</p>':''}
     <div class="statrow"><div class="stat"><b>${r.right}</b>right</div><div class="stat"><b>${acc}%</b>correct</div><div class="stat"><b>${r.mode==='clock'?fmtTime(r.dur):fmtTime(secs)}</b>time</div></div>
     ${res.nb.length?`<h3>New sticker${res.nb.length>1?'s':''}!</h3><div class="newbadge">${res.nb.map(b=>`<div class="sticker"><div class="disc">${b.g}</div>${b.n}</div>`).join('')}</div>`:''}
-    ${r.missed.length?`<h3>Practice these</h3><div class="missed">${uniqProbs(r.missed).map(p=>`<span>${inline(p)} = <em>${p.ans}</em></span>`).join('')}</div>`:''}
+    ${r.missed.length?`<h3>Practice these</h3><div class="missed">${uniqProbs(r.missed).map(p=>`<span>${fullHTML(p)}</span>`).join('')}</div>`:''}
     <div class="row" style="justify-content:center;margin-top:8px"><button class="btn primary big" data-act="start" data-v="${r.mode}">Play again</button><button class="btn big" data-act="tohome">Home</button></div>
   </div></div>`;
 }
@@ -782,9 +961,8 @@ function uniqProbs(a){const seen={};return a.filter(p=>seen[p.key]?false:(seen[p
 /* ---------- worksheet ---------- */
 function Sheet(){
   const r=run,k=kid;
-  const right=r.graded?r.probs.filter((p,i)=>parseInt(r.typed[i],10)===p.ans).length:0;
-  const blanks=r.typed.filter(t=>t===''||t==='-').length;
-  const neg=k.settings.neg&&k.settings.ops.includes('sub');
+  const right=r.graded?r.probs.filter((p,i)=>checkAns(p,r.typed[i])).length:0;
+  const blanks=r.typed.filter(isBlank).length;
   const banner=r.graded?`<div class="panel spread" style="border-color:${right===r.probs.length?'var(--mint)':'var(--line)'}"><div><h2>${right} of ${r.probs.length} right${right===r.probs.length?' — perfect page!':''}</h2><p class="muted">+${kid.stars-r.stars0} stars · ${fmtTime(Math.round(r.ms/1000))}</p></div><div class="row"><button class="btn primary" data-act="start" data-v="sheet">New sheet</button><button class="btn" data-act="tohome">Home</button></div></div>
     ${r.nb&&r.nb.up?levelUpCard(r.nb.up):''}
     ${r.nb&&r.nb.length?`<div class="panel row"><b>New sticker${r.nb.length>1?'s':''}:</b>${r.nb.map(b=>`<div class="sticker"><div class="disc">${b.g}</div>${b.n}</div>`).join('')}</div>`:''}`:'';
@@ -793,15 +971,11 @@ function Sheet(){
     ${banner}
     <div class="play">
       <div class="sheet" role="list">${r.probs.map((p,i)=>{
-        const t=r.typed[i],ok=r.graded&&parseInt(t,10)===p.ans;
+        const t=r.typed[i],ok=r.graded&&checkAns(p,t);
         const cls='cell'+(!r.graded&&i===r.sel?' sel':'')+(r.graded?(ok?' right':' wrong'):'');
-        return `<button class="${cls}" data-act="cell" data-v="${i}" role="listitem" aria-label="Problem ${i+1}"><span class="num">${i+1}</span>${probHTML(p,t,!r.graded&&i===r.sel?null:t)}${r.graded?(ok?'<span class="mark">✓</span>':'<span class="mark">'+p.ans+'</span>'):''}</button>`}).join('')}</div>
+        return `<button class="${cls}" data-act="cell" data-v="${i}" role="listitem" aria-label="Problem ${i+1}"><span class="num">${i+1}</span>${probHTML(p,t,!r.graded&&i===r.sel?null:t)}${r.graded?(ok?'<span class="mark">✓</span>':'<span class="mark">'+esc(p.ansText)+'</span>'):''}</button>`}).join('')}</div>
       ${r.graded?'':`<div class="sheetpad" style="display:flex;flex-direction:column;gap:10px">
-        <div class="keypad" id="pad">
-          ${neg?'<button class="key minus" data-key="-">− (below zero)</button>':''}
-          ${[7,8,9,4,5,6,1,2,3].map(n=>`<button class="key" data-key="${n}">${n}</button>`).join('')}
-          <button class="key back" data-key="back" aria-label="Erase">⌫</button><button class="key" data-key="0">0</button><button class="key go" data-key="go" aria-label="Enter, next problem"><span class="gk">↵</span><small>Next</small></button>
-        </div>
+        <div class="keypad" id="pad">${padHTML(r.probs[r.sel],true)}</div>
         ${r.warn&&blanks?`<div class="panel" style="text-align:center"><b>${blanks} left blank.</b> Check anyway?<div class="row" style="justify-content:center;margin-top:8px"><button class="btn primary" data-act="grade" data-v="force">Yes, check it</button><button class="btn" data-act="nowarn">Keep going</button></div></div>`:`<button class="btn blue big" data-act="grade">Check my sheet</button>`}
       </div>`}
     </div></div>`;
@@ -809,20 +983,18 @@ function Sheet(){
 function sheetKey(k){
   const r=run;if(!r||r.graded)return;
   const i=r.sel;
-  if(k==='back')r.typed[i]=r.typed[i].slice(0,-1);
-  else if(k==='go'){const nx=nextBlank(i);r.sel=nx<0?i:nx}
-  else if(k==='-')r.typed[i]=r.typed[i].startsWith('-')?r.typed[i].slice(1):'-'+r.typed[i];
-  else if(r.typed[i].replace('-','').length<5)r.typed[i]+=k;
+  if(k==='go'){const nx=nextBlank(i);r.sel=nx<0?i:nx}
+  else r.typed[i]=applyKey(r.probs[i],r.typed[i],k);
   sfx.tap();r.warn=false;render();
   const sel=$app.querySelector('.cell.sel');if(sel)sel.scrollIntoView({block:'nearest',behavior:'smooth'});
 }
-function nextBlank(i){const n=run.probs.length;for(let j=1;j<=n;j++){const x=(i+j)%n;if(run.typed[x]===''||run.typed[x]==='-')return x}return -1}
+function nextBlank(i){const n=run.probs.length;for(let j=1;j<=n;j++){const x=(i+j)%n;if(isBlank(run.typed[x]))return x}return -1}
 function grade(force){
-  const r=run,blanks=r.typed.filter(t=>t===''||t==='-').length;
+  const r=run,blanks=r.typed.filter(isBlank).length;
   if(blanks&&!force){r.warn=true;render();return}
   r.graded=true;r.ms=Date.now()-r.start;
   const per=r.ms/r.probs.length;let right=0;
-  r.probs.forEach((p,i)=>{if(r.typed[i]===''||r.typed[i]==='-')return;const ok=parseInt(r.typed[i],10)===p.ans;if(ok)right++;record(kid,p,ok,per)});
+  r.probs.forEach((p,i)=>{if(isBlank(r.typed[i]))return;const ok=checkAns(p,r.typed[i]);if(ok)right++;record(kid,p,ok,per)});
   const perfect=right===r.probs.length;
   if(perfect)kid.stars+=5;
   r.nb=endSession(kid,{t:Date.now(),mode:'sheet',n:r.probs.length,right,ms:r.ms});
@@ -853,8 +1025,8 @@ function Parent(){
     </div>
     <div class="panel" style="display:flex;flex-direction:column;gap:10px"><div class="spread"><h3>Problems per day</h3><span class="muted">Last 14 days</span></div><div class="overflow">${chart(days)}</div></div>
     <div class="two">
-      <div class="panel" style="display:flex;flex-direction:column;gap:10px"><h3>By operation</h3>
-        ${ops.length?`<div class="overflow"><table class="optable"><thead><tr><th>Type</th><th>Tries</th><th>Accuracy</th><th>Avg</th></tr></thead><tbody>${ops.map(([o,t])=>{const n=t[0]+t[1],a=t[0]/n;return `<tr><td>${OPS[o].sym} ${OPS[o].label}</td><td>${n}</td><td><div class="row" style="gap:8px;flex-wrap:nowrap"><div class="accbar"><i style="width:${a*100}%"></i></div>${Math.round(a*100)}%</div></td><td>${(t[2]/n/1000).toFixed(1)}s</td></tr>`}).join('')}</tbody></table></div>`:'<p class="muted">No answers yet.</p>'}
+      <div class="panel" style="display:flex;flex-direction:column;gap:10px"><h3>By skill</h3>
+        ${ops.length?`<div class="overflow"><table class="optable"><thead><tr><th>Type</th><th>Tries</th><th>Accuracy</th><th>Avg</th></tr></thead><tbody>${ops.map(([o,t])=>{const n=t[0]+t[1],a=t[0]/n;return `<tr><td>${esc(KIND_LABEL[o]||o)}</td><td>${n}</td><td><div class="row" style="gap:8px;flex-wrap:nowrap"><div class="accbar"><i style="width:${a*100}%"></i></div>${Math.round(a*100)}%</div></td><td>${(t[2]/n/1000).toFixed(1)}s</td></tr>`}).join('')}</tbody></table></div>`:'<p class="muted">No answers yet.</p>'}
       </div>
       <div class="panel" style="display:flex;flex-direction:column;gap:10px"><h3>Trickiest facts</h3>
         ${tricky.length?`<div class="tricky">${tricky.map(x=>`<span>${inline(x.p)} = ${x.p.ans} <small>· ${Math.round(x.acc*x.n)}/${x.n} right · ${(x.avg/1000).toFixed(1)}s</small></span>`).join('')}</div><p class="muted">These come up more often in practice until they stick.</p>`:'<p class="muted">Nothing tricky yet. Facts show here after they\'re missed or slow (over 5 seconds) at least twice.</p>'}
@@ -957,7 +1129,8 @@ $app.addEventListener('click',e=>{
     case 'settings':go('settings',{kid,from:'home'});break;
     case 'psettings':go('settings',{kid:kids[v],from:'parent',pid:v});break;
     case 'back':{saveSettingsName();if(v==='parent')go('parent',{id:view.pid});else go('home');break;}
-    case 'op':{resetAdapt(view.kid);const s=(view.kid).settings,i=s.ops.indexOf(v);if(i>=0){if(s.ops.length===1){toast('Keep at least one kind of problem');return}s.ops.splice(i,1)}else s.ops.push(v);s.ops.sort((x,y)=>Object.keys(OPS).indexOf(x)-Object.keys(OPS).indexOf(y));saveSettingsName();saveKid(view.kid);render();break;}
+    case 'op':{resetAdapt(view.kid);const s=(view.kid).settings,i=s.ops.indexOf(v);if(i>=0){if(s.ops.length===1&&!(s.extras||[]).length){toast('Keep at least one kind of problem');return}s.ops.splice(i,1)}else s.ops.push(v);s.ops.sort((x,y)=>Object.keys(OPS).indexOf(x)-Object.keys(OPS).indexOf(y));saveSettingsName();saveKid(view.kid);render();break;}
+    case 'extra':{const s=view.kid.settings,ex=s.extras,i=ex.indexOf(v);if(i>=0){if(ex.length===1&&!s.ops.length){toast('Keep at least one kind of problem');return}ex.splice(i,1)}else{ex.push(v);ex.sort((a,b)=>Object.keys(EXTRAS).indexOf(a)-Object.keys(EXTRAS).indexOf(b))}saveSettingsName();saveKid(view.kid);render();break;}
     case 'set':{if(['addMax','mulMax'].includes(b.dataset.k))resetAdapt(view.kid);view.kid.settings[b.dataset.k]=+v;saveSettingsName();saveKid(view.kid);render();break;}
     case 'tog':{const s=view.kid.settings;s[b.dataset.k]=!s[b.dataset.k];saveSettingsName();saveKid(view.kid);render();break;}
     case 'table':{resetAdapt(view.kid);const s=view.kid.settings,t=+v,i=s.tables.indexOf(t);if(i>=0)s.tables.splice(i,1);else{s.tables.push(t);s.tables.sort((x,y)=>x-y)}saveSettingsName();saveKid(view.kid);render();break;}
@@ -998,7 +1171,7 @@ document.addEventListener('keydown',e=>{
   if(e.target&&e.target.tagName==='INPUT'){if(e.key==='Enter'&&screen==='add'){$app.querySelector('[data-act="createkid"]')?.click()}return}
   if(screen!=='play'&&screen!=='sheet')return;
   let k=null;
-  if(/^[0-9]$/.test(e.key))k=e.key;else if(e.key==='Backspace')k='back';else if(e.key==='Enter')k='go';else if(e.key==='-')k='-';
+  if(/^[0-9]$/.test(e.key))k=e.key;else if(e.key==='Backspace')k='back';else if(e.key==='Enter')k='go';else if(e.key==='r'||e.key==='R')k='R';else if('-:.<>='.includes(e.key))k=e.key;
   if(!k)return;
   e.preventDefault();
   if(screen==='play')key(k);else sheetKey(k);
