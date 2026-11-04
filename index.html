@@ -256,13 +256,20 @@ input[type=text]:focus-visible{outline:3px solid var(--sky);outline-offset:1px}
 .overlay{position:fixed;inset:0;background:color-mix(in srgb,var(--ink) 45%,transparent);display:grid;place-items:center;z-index:30;
   padding:max(16px,env(safe-area-inset-top,0px)) max(16px,env(safe-area-inset-right,0px)) max(16px,env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px))}
 .dialog{background:var(--card);border:2px solid var(--line);border-radius:24px;padding:24px;max-width:420px;width:100%;display:flex;flex-direction:column;gap:14px;align-items:center;text-align:center}
-.holdbtn{position:relative;width:140px;height:140px;border-radius:50%;border:0;background:none;cursor:pointer;touch-action:none;user-select:none;-webkit-user-select:none}
-.holdbtn svg{position:absolute;inset:0;transform:rotate(-90deg)}
-.holdbtn span{position:relative;font-weight:800;font-size:1.05rem}
 #fx{position:fixed;inset:0;width:100%;height:100%;pointer-events:none;z-index:40}
 .toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--paper);padding:.6em 1.1em;border-radius:14px;font-weight:700;z-index:50}
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 [hidden]{display:none!important}
+.dialog.pin{max-width:380px}
+.pindots{display:flex;gap:16px;justify-content:center;padding:6px 0}
+.pindots span{width:20px;height:20px;border-radius:50%;border:3px solid var(--ink-soft)}
+.pindots span.on{background:var(--ink);border-color:var(--ink)}
+.pinans{font-weight:800;font-size:2.2rem;min-width:4ch;border-bottom:3px solid var(--line);text-align:center;font-variant-numeric:tabular-nums}
+.pinpad{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;width:100%}
+.pinpad .key{min-height:60px;font-size:1.6rem}
+.avtap{border:0;cursor:pointer;padding:0}
+.avtap:focus-visible{outline:3px solid var(--sky);outline-offset:2px}
+.avatars.big .avbtn{width:84px;height:84px;font-size:3rem}
 .topics{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:14px}
 .topic{position:relative;border:2px solid var(--line);border-radius:22px;background:var(--card);box-shadow:0 5px 0 var(--shadow);padding:16px;text-align:left;cursor:pointer;display:flex;flex-direction:column;gap:4px;min-height:150px;transition:transform .08s;color:var(--ink)}
 .topic:active{transform:translateY(4px);box-shadow:0 1px 0 var(--shadow)}
@@ -390,7 +397,7 @@ function stickerHTML(b,k,showProg){
 }
 function nextGoal(k){
   let best=null;
-  for(const b of visibleBadges(k)){if(k.badges[b.id])continue;const [c,t]=b.prog(k),r=c/t;if(r>=1)continue;if(!best||r>best.r||(r===best.r&&t-c<best.t-best.c))best={b,c,t,r}}
+  for(const b of visibleBadges(k)){if(k.badges[b.id]||b.id==='early'||b.id==='weekend')continue;const [c,t]=b.prog(k),r=c/t;if(r>=1)continue;if(!best||r>best.r||(r===best.r&&t-c<best.t-best.c))best={b,c,t,r}}
   return best;
 }
 const TIME_LV=['Hour','Half hour','Quarter hour','5 minutes','Any minute'];
@@ -416,7 +423,7 @@ const sum=a=>a.reduce((x,y)=>x+y,0);
 /* ---------- storage: on this device ---------- */
 const LS='numberRally.v1';
 let kids={};
-let prefs={sound:true,lastBackup:0,tipHidden:false};
+let prefs={sound:true,lastBackup:0,tipHidden:false,pinHash:'',pinFails:0,pinLockUntil:0};
 function loadLocal(){try{const t=localStorage.getItem(LS);if(t){const o=JSON.parse(t);kids=o.kids||{};prefs=Object.assign(prefs,o.prefs||{})}}catch(e){}
   Object.values(kids).forEach(migrate)}
 let saveFailed=false;
@@ -780,9 +787,9 @@ function toast(msg){const t=document.createElement('div');t.className='toast';t.
 
 /* ---------- navigation ---------- */
 let screen='profiles',kid=null,run=null,cleanups=[],view={};
-function go(name,v){cleanups.forEach(f=>{try{f()}catch(e){}});cleanups=[];screen=name;view=v||{};render();$app.querySelector('.screen')?.scrollTo(0,0)}
+function go(name,v){cleanups.forEach(f=>{try{f()}catch(e){}});cleanups=[];if(!['parent','settings','add'].includes(name))grownUntil=0;screen=name;view=v||{};render();$app.querySelector('.screen')?.scrollTo(0,0)}
 function render(){
-  const f={profiles:Profiles,add:AddKid,home:Home,pick:Pick,stickers:StickerBook,settings:Settings,play:Play,sheet:Sheet,result:Result,parent:Parent}[screen];
+  const f={profiles:Profiles,add:AddKid,home:Home,avatar:AvatarPick,pick:Pick,stickers:StickerBook,settings:Settings,play:Play,sheet:Sheet,result:Result,parent:Parent}[screen];
   $app.innerHTML=f();
   if(screen==='play')drawPlay();
 }
@@ -838,7 +845,7 @@ function Home(){
   const unlocked=RACERS.filter(r=>k.stars>=r.s);
   const next=RACERS.find(r=>k.stars<r.s);
   return `<div class="screen">
-    <div class="topbar"><div class="who"><button class="btn ghost" data-act="home0" aria-label="Switch player">‹</button><span class="avatar" style="width:56px;height:56px;font-size:2.1rem">${avHTML(k.avatar)}</span><h2>${esc(k.name)}</h2></div>
+    <div class="topbar"><div class="who"><button class="btn ghost" data-act="home0" aria-label="Switch player">‹</button><button class="avatar avtap" data-act="avpick" aria-label="Change your animal" title="Change your animal" style="width:56px;height:56px;font-size:2.1rem">${avHTML(k.avatar)}</button><h2>${esc(k.name)}</h2></div>
       <div class="row">${st>0?'<span class="pill">🔥 '+st+' day'+(st>1?'s':'')+'</span>':''}${starPill()}${soundBtn()}</div></div>
     <div class="modes">
       <button class="mode m-practice" data-act="pick" data-v="practice">${ICONS.practice}<h3>Practice</h3><p>${s.practiceLen} problems, one at a time. Misses come back.</p></button>
@@ -846,7 +853,7 @@ function Home(){
       <button class="mode m-sheet" data-act="pick" data-v="sheet">${ICONS.sheet}<h3>Worksheet</h3><p>${s.sheetLen} problems on a page. Check them with the red pen.</p></button>
       <button class="mode m-race" data-act="start" data-v="race">${ICONS.race}<h3>Race Robo</h3><p>Level ${k.raceLevel}. Get ${RACE_TARGET} right before Robo crosses the line.</p></button>
     </div>
-    <div class="panel spread"><div class="mathline"><span class="label" style="margin-right:4px">Your math</span>${mathSummary(s).map(t=>'<span class="tag">'+esc(t)+'</span>').join('')}</div><button class="btn" data-act="settings">Change</button></div>
+    <div class="panel spread"><div class="mathline"><span class="label" style="margin-right:4px">Your math</span>${mathSummary(s).map(t=>'<span class="tag">'+esc(t)+'</span>').join('')}</div><button class="btn" data-act="settings" aria-label="Change the math (grown-ups)"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>Change</button></div>
     <div class="two">
       ${stickerPanel(k)}
       <div class="panel" style="display:flex;flex-direction:column;gap:12px"><div class="spread"><h3>Garage</h3><span class="muted">${next?'Next ride at ★'+next.s:'All rides unlocked'}</span></div>
@@ -1166,6 +1173,7 @@ function Parent(){
       </div>
     </div>
     ${backupPanel()}
+    <div class="panel spread"><div><h3>Grown-up PIN</h3><p class="muted">Needed to open this screen, change the math, or add a player. The screen stays unlocked for 5 minutes or until you go back to a kid's screen.</p></div><button class="btn" data-act="pinchange">Change PIN</button></div>
   </div>`;
 }
 function growPanel(k){
@@ -1209,19 +1217,62 @@ function chart(days){
 }
 
 /* ---------- grown-up gate ---------- */
-function openGate(){
-  const o=document.createElement('div');o.className='overlay';
-  o.innerHTML=`<div class="dialog" role="dialog" aria-label="Grown-ups only"><h2>Grown-ups only</h2><p class="muted">Press and hold the circle for 3 seconds.</p>
-    <button class="holdbtn" id="hold"><svg viewBox="0 0 140 140"><circle cx="70" cy="70" r="62" fill="none" stroke="var(--line)" stroke-width="10"/><circle id="ring" cx="70" cy="70" r="62" fill="none" stroke="var(--mint)" stroke-width="10" stroke-linecap="round" stroke-dasharray="389.6" stroke-dashoffset="389.6"/></svg><span>Hold</span></button>
-    <button class="btn" id="gclose">Cancel</button></div>`;
-  document.body.appendChild(o);
-  const ring=o.querySelector('#ring'),hold=o.querySelector('#hold');let t0=0,raf=0;
-  const stop=()=>{cancelAnimationFrame(raf);t0=0;ring.style.strokeDashoffset=389.6};
-  const step=()=>{const p=Math.min(1,(Date.now()-t0)/3000);ring.style.strokeDashoffset=389.6*(1-p);if(p>=1){o.remove();go('parent')}else raf=requestAnimationFrame(step)};
-  hold.addEventListener('pointerdown',e=>{e.preventDefault();t0=Date.now();raf=requestAnimationFrame(step)});
-  ['pointerup','pointerleave','pointercancel'].forEach(ev=>hold.addEventListener(ev,stop));
-  hold.addEventListener('contextmenu',e=>e.preventDefault());
-  o.querySelector('#gclose').addEventListener('click',()=>o.remove());
+/* ---------- grown-up PIN ---------- */
+let grownUntil=0;
+const pinHash=v=>{let x=5381;for(const c of 'nr-pin:'+v)x=((x<<5)+x+c.charCodeAt(0))|0;return String(x)};
+function requireGrownup(fn){if(Date.now()<grownUntil){fn();return}openPin(prefs.pinHash?'enter':'check',()=>{grownUntil=Date.now()+5*60*1000;fn()})}
+function openPin(mode,done){
+  const o=document.createElement('div');o.className='overlay';document.body.appendChild(o);
+  let typed='',first='',q=null,msg='';
+  const newQ=()=>{const a=ri(13,49),b=ri(13,49);q={a,b,ans:a*b}};
+  if(mode==='check')newQ();
+  const close=()=>{o.remove();document.removeEventListener('keydown',kb,true)};
+  const title=()=>({enter:'Grown-ups only',check:prefs.pinHash?'Reset the PIN':'Set up a grown-up PIN',new:'Choose a 4-digit PIN',confirm:'Type the PIN again'})[mode];
+  const help=()=>mode==='check'?(prefs.pinHash?'Forgot it? ':'')+'First, a quick grown-up check: what is '+q.a+' × '+q.b+'?':({enter:'Enter your PIN.',new:'You\'ll need it to open the grown-ups screen and change the math.',confirm:'Just to be sure.'})[mode];
+  const isPin=()=>mode!=='check';
+  function draw(){
+    const locked=mode==='enter'&&Date.now()<prefs.pinLockUntil;
+    const shown=isPin()?`<div class="pindots">${[0,1,2,3].map(i=>`<span class="${i<typed.length?'on':''}"></span>`).join('')}</div>`:`<div class="pinans">${esc(typed)||'&nbsp;'}</div>`;
+    o.innerHTML=`<div class="dialog pin" role="dialog" aria-label="${esc(title())}"><h2>${esc(title())}</h2><p class="muted">${esc(help())}</p>${shown}
+      ${msg?`<p class="note warn">${esc(msg)}</p>`:''}
+      ${locked?`<p class="note warn">Too many tries. Wait ${Math.ceil((prefs.pinLockUntil-Date.now())/1000)} seconds.</p>`:`<div class="pinpad">${[1,2,3,4,5,6,7,8,9].map(n=>`<button class="key" data-p="${n}">${n}</button>`).join('')}<button class="key back" data-p="back" aria-label="Erase">⌫</button><button class="key" data-p="0">0</button>${isPin()?'<span></span>':'<button class="key go" data-p="go" aria-label="Check"><span class="gk">✓</span></button>'}</div>`}
+      <div class="row" style="justify-content:center">${mode==='enter'?'<button class="btn ghost" data-p="forgot">Forgot PIN?</button>':''}<button class="btn" data-p="cancel">Cancel</button></div></div>`;
+    if(locked)setTimeout(()=>{if(o.isConnected)draw()},1000);
+  }
+  function finishPin(){
+    if(mode==='enter'){
+      if(pinHash(typed)===prefs.pinHash){prefs.pinFails=0;saveLocal();close();done();return}
+      prefs.pinFails++;typed='';msg='That PIN isn\'t right.';
+      if(prefs.pinFails>=5){prefs.pinFails=0;prefs.pinLockUntil=Date.now()+30000;msg=''}
+      saveLocal();sfx.bad();
+    }else if(mode==='new'){first=typed;typed='';mode='confirm';msg=''}
+    else if(mode==='confirm'){
+      if(typed===first){prefs.pinHash=pinHash(typed);prefs.pinFails=0;saveLocal();close();toast('PIN saved');done();return}
+      typed='';first='';mode='new';msg='Those didn\'t match. Try again.';sfx.bad();
+    }
+  }
+  function press(k){
+    if(k==='cancel'){close();return}
+    if(k==='forgot'){mode='check';typed='';msg='';newQ();draw();return}
+    if(mode==='enter'&&Date.now()<prefs.pinLockUntil)return;
+    if(k==='back'){typed=typed.slice(0,-1);draw();return}
+    if(k==='go'){
+      if(mode==='check'){if(+typed===q.ans){mode='new';typed='';msg=''}else{typed='';msg='Not quite. Here\'s a new one.';newQ();sfx.bad()}draw()}
+      return;
+    }
+    if(!/^\d$/.test(k))return;
+    if(isPin()){if(typed.length>=4)return;typed+=k;sfx.tap();if(typed.length===4){draw();setTimeout(()=>{finishPin();if(o.isConnected)draw()},150);return}}
+    else{if(typed.length>=5)return;typed+=k;sfx.tap()}
+    draw();
+  }
+  function kb(e){if(/^\d$/.test(e.key))press(e.key);else if(e.key==='Backspace')press('back');else if(e.key==='Enter')press('go');else if(e.key==='Escape')press('cancel');else return;e.preventDefault();e.stopImmediatePropagation()}
+  document.addEventListener('keydown',kb,true);
+  o.addEventListener('click',e=>{const b=e.target.closest('[data-p]');if(b)press(b.dataset.p)});
+  draw();
+}
+function AvatarPick(){
+  return `<div class="screen"><div class="topbar"><button class="btn ghost" data-act="tohome">‹ Back</button><h2>Pick your animal</h2><span></span></div>
+    <div class="panel"><div class="avatars big">${AVATARS.map(x=>`<button class="avbtn ${x===kid.avatar?'on':''}" data-act="kidav" data-v="${x}" aria-label="${avName(x)}" title="${avName(x)}">${avHTML(x)}</button>`).join('')}</div></div></div>`;
 }
 
 /* ---------- events ---------- */
@@ -1238,7 +1289,7 @@ $app.addEventListener('click',e=>{
   const a=b.dataset.act,v=b.dataset.v;
   switch(a){
     case 'sound':prefs.sound=!prefs.sound;saveLocal();render();break;
-    case 'addkid':go('add',{level:'grow',avatar:AVATARS[Object.keys(kids).length%AVATARS.length]});break;
+    case 'addkid':{const open=()=>go('add',{level:'grow',avatar:AVATARS[Object.keys(kids).length%AVATARS.length]});if(Object.keys(kids).length)requireGrownup(open);else open();break;}
     case 'av':view.name=document.getElementById('kname').value;view.avatar=v;render();break;
     case 'lv':view.name=document.getElementById('kname').value;view.level=v;render();break;
     case 'createkid':{
@@ -1248,7 +1299,10 @@ $app.addEventListener('click',e=>{
     case 'pickkid':kid=kids[b.dataset.id];sfx.tap();go('home');break;
     case 'home0':kid=null;go('profiles');break;
     case 'tohome':go('home');break;
-    case 'settings':go('settings',{kid,from:'home'});break;
+    case 'settings':requireGrownup(()=>go('settings',{kid,from:'home'}));break;
+    case 'avpick':go('avatar');break;
+    case 'kidav':kid.avatar=v;saveKid(kid);sfx.tap();go('home');break;
+    case 'pinchange':openPin('new',()=>{});break;
     case 'psettings':go('settings',{kid:kids[v],from:'parent',pid:v});break;
     case 'back':{saveSettingsName();if(v==='parent')go('parent',{id:view.pid});else go('home');break;}
     case 'op':{resetAdapt(view.kid);const s=(view.kid).settings,i=s.ops.indexOf(v);if(i>=0){if(s.ops.length===1&&!(s.extras||[]).length){toast('Keep at least one kind of problem');return}s.ops.splice(i,1)}else s.ops.push(v);s.ops.sort((x,y)=>Object.keys(OPS).indexOf(x)-Object.keys(OPS).indexOf(y));saveSettingsName();saveKid(view.kid);render();break;}
@@ -1265,7 +1319,7 @@ $app.addEventListener('click',e=>{
     case 'cell':if(!run.graded){run.sel=+v;run.warn=false;sfx.tap();render()}break;
     case 'grade':grade(v==='force');break;
     case 'nowarn':run.warn=false;render();break;
-    case 'gate':openGate();break;
+    case 'gate':requireGrownup(()=>go('parent'));break;
     case 'ptab':go('parent',{id:v});break;
     case 'askdel':view.confirmDel=v;render();break;
     case 'canceldel':view.confirmDel=null;render();break;
