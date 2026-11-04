@@ -260,6 +260,9 @@ input[type=text]:focus-visible{outline:3px solid var(--sky);outline-offset:1px}
 .toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--paper);padding:.6em 1.1em;border-radius:14px;font-weight:700;z-index:50}
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 [hidden]{display:none!important}
+.famcode{font-family:var(--body);font-weight:800;font-size:1.1rem;letter-spacing:.06em;background:color-mix(in srgb,var(--sky) 10%,var(--card));border:2px solid var(--line);border-radius:10px;padding:.25em .6em}
+.panel.remote{border-color:color-mix(in srgb,var(--sky) 45%,var(--line));background:color-mix(in srgb,var(--sky) 8%,var(--card))}
+.cloud{color:inherit;opacity:.8}
 .dialog.pin{max-width:380px}
 .pindots{display:flex;gap:16px;justify-content:center;padding:6px 0}
 .pindots span{width:20px;height:20px;border-radius:50%;border:3px solid var(--ink-soft)}
@@ -423,13 +426,85 @@ const sum=a=>a.reduce((x,y)=>x+y,0);
 /* ---------- storage: on this device ---------- */
 const LS='numberRally.v1';
 let kids={};
-let prefs={sound:true,lastBackup:0,tipHidden:false,pinHash:'',pinFails:0,pinLockUntil:0};
+let prefs={sound:true,lastBackup:0,tipHidden:false,pinHash:'',pinFails:0,pinLockUntil:0,famId:'',famCode:'',syncDirty:{},lastSyncAt:0};
 function loadLocal(){try{const t=localStorage.getItem(LS);if(t){const o=JSON.parse(t);kids=o.kids||{};prefs=Object.assign(prefs,o.prefs||{})}}catch(e){}
   Object.values(kids).forEach(migrate)}
 let saveFailed=false;
 function saveLocal(){try{localStorage.setItem(LS,JSON.stringify({kids,prefs}));saveFailed=false}catch(e){if(!saveFailed){saveFailed=true;toast('Progress could not be saved on this tablet. Check that storage is not full.')}}}
-function saveKid(k){k.updated=Date.now();saveLocal()}
-function deleteKid(id){delete kids[id];saveLocal()}
+function saveKid(k){k.updated=Date.now();markDirty(k.id);saveLocal();scheduleSync()}
+function deleteKid(id){delete kids[id];markDirty(id);saveLocal();scheduleSync()}
+
+/* ---------- family sync ---------- */
+// Family sync uses Supabase. Fill in the project URL and the publishable (anon) key.
+// Both are safe to publish: the table is locked and only the nr_* functions are callable.
+const SUPA_URL='';
+const SUPA_KEY='';
+const SYNC_URL=SUPA_URL&&SUPA_KEY?SUPA_URL.replace(/\/+$/,''):'';
+function rpc(name,args,keepalive){
+  const h={'Content-Type':'application/json','apikey':SUPA_KEY};
+  if(SUPA_KEY.startsWith('eyJ'))h.Authorization='Bearer '+SUPA_KEY;
+  return fetch(SYNC_URL+'/rest/v1/rpc/'+name,{method:'POST',headers:h,body:JSON.stringify(args),keepalive:!!keepalive,cache:'no-store'});
+}
+let remoteKids={},syncTimer=0,syncing=false,famFetchedAt=0;
+function markDirty(id){if(prefs.famId){prefs.syncDirty=prefs.syncDirty||{};prefs.syncDirty[id]=1}}
+function scheduleSync(ms){if(!SYNC_URL||!prefs.famId)return;clearTimeout(syncTimer);syncTimer=setTimeout(syncNow,ms==null?3000:ms)}
+const FAM_ABC='ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+function newFamCode(){const r=crypto.getRandomValues(new Uint8Array(16));let o='';r.forEach((b,i)=>{o+=FAM_ABC[b%32];if(i%4===3&&i<15)o+='-'});return o}
+function normFamCode(v){const c=String(v||'').toUpperCase().replace(/[^A-Z0-9]/g,'');if(c.length!==16||[...c].some(ch=>!FAM_ABC.includes(ch)))return null;return c.match(/.{4}/g).join('-')}
+async function famIdFor(code){const buf=await crypto.subtle.digest('SHA-256',new TextEncoder().encode('number-rally:'+code.replace(/-/g,'')));return [...new Uint8Array(buf)].map(b=>b.toString(16).padStart(2,'0')).join('')}
+async function syncNow(hidden){
+  if(!SYNC_URL||!prefs.famId||syncing)return;
+  if(navigator.onLine===false){scheduleSync(30000);return}
+  syncing=true;
+  try{
+    for(const id of Object.keys(prefs.syncDirty||{})){
+      const k=kids[id];
+      let r;
+      if(!k)r=await rpc('nr_delete_kid',{fam:prefs.famId,kid:id});
+      else{const small=JSON.stringify(k).length<60000;r=await rpc('nr_put_kid',{fam:prefs.famId,kid:id,payload:k},!!hidden&&small)}
+      if(!r.ok)throw new Error('sync '+r.status);
+      delete prefs.syncDirty[id];prefs.lastSyncAt=Date.now();saveLocal();
+    }
+  }catch(e){scheduleSync(60000)}
+  finally{syncing=false}
+}
+async function fetchFamily(){
+  if(!SYNC_URL||!prefs.famId)return false;
+  try{
+    const r=await rpc('nr_get_family',{fam:prefs.famId});if(!r.ok)throw 0;
+    const arr=await r.json();const next={};
+    (Array.isArray(arr)?arr:[]).forEach(x=>{if(x&&x.kid&&x.kid.id&&x.kid.name&&x.kid.totals){const k=migrate(x.kid);k._at=x.at;next[k.id]=k}});
+    remoteKids=next;famFetchedAt=Date.now();return true;
+  }catch(e){return false}
+}
+function ago(t){const m=Math.round((Date.now()-t)/60000);if(m<1)return 'just now';if(m<60)return m+' min ago';const h=Math.round(m/60);if(h<24)return h+' hour'+(h>1?'s':'')+' ago';const d=Math.round(h/24);return d+' day'+(d>1?'s':'')+' ago'}
+function familyPanel(){
+  if(!SYNC_URL)return `<div class="panel" style="display:flex;flex-direction:column;gap:8px"><h3>Family sync</h3><p class="muted">Not set up yet. Once it is, you'll see every kid's progress from any tablet or your computer.</p></div>`;
+  const msg=view.famMsg?`<p class="note ${view.famErr?'warn':'good'}">${esc(view.famMsg)}</p>`:'';
+  if(!prefs.famId)return `<div class="panel" style="display:flex;flex-direction:column;gap:10px"><h3>Family sync</h3>
+    <p class="muted" style="max-width:62ch">Join this device to your family to see every kid's progress here, on the other tablet, and on your computer. Each tablet uploads its kid's progress after every round.</p>
+    <div class="row"><button class="btn primary" data-act="famnew">Create a family code</button><span class="muted">On the first device only</span></div>
+    <div class="row"><input type="text" id="famcode" placeholder="XXXX-XXXX-XXXX-XXXX" autocomplete="off" autocapitalize="characters" spellcheck="false" style="max-width:320px" aria-label="Family code"><button class="btn blue" data-act="famjoin">Join with a code</button></div>
+    ${msg}
+    <p class="muted" style="max-width:62ch">Synced: each kid's first name, animal, math settings and progress. It's stored in your own Supabase project.</p></div>`;
+  const pend=Object.keys(prefs.syncDirty||{}).length;
+  const status=pend?(navigator.onLine===false?'Offline. Progress uploads when this device is back online.':'Uploading progress…'):'Up to date'+(prefs.lastSyncAt?'. Last upload '+ago(prefs.lastSyncAt)+'.':'.');
+  return `<div class="panel" style="display:flex;flex-direction:column;gap:10px">
+    <div class="spread"><h3>Family sync</h3><span class="note good">On</span></div>
+    <p>${esc(status)}</p>
+    <div class="row"><span class="label">Family code</span><code class="famcode">${view.showCode?esc(prefs.famCode):'••••-••••-••••-••••'}</code><button class="btn ghost" data-act="famshow">${view.showCode?'Hide':'Show'}</button><button class="btn ghost" data-act="famcopy">Copy</button></div>
+    <p class="muted" style="max-width:62ch">To add another device, open Number Rally there, go to For grown-ups, and join with this code. On a computer, open <b>${esc(location.origin+location.pathname)}#grownups</b>.</p>
+    ${msg}
+    <div class="row">${view.famLeave?`<b>Stop syncing on this device?</b> Progress already uploaded stays in the cloud.<button class="btn danger" data-act="famleave">Stop syncing</button><button class="btn" data-act="famstay">Cancel</button>`:`<button class="btn ghost danger" data-act="famleaveask">Stop syncing on this device</button>`}</div>
+  </div>`;
+}
+async function joinFamily(code,isNew){
+  prefs.famCode=code;prefs.famId=await famIdFor(code);prefs.syncDirty={};
+  Object.keys(kids).forEach(markDirty);saveLocal();
+  await syncNow();await fetchFamily();
+  view.famMsg=isNew?'Family code created. Enter it on your other devices.':'Joined. Everyone\'s progress shows here now.';view.famErr=false;view.showCode=!!isNew;
+  if(screen==='parent')render();
+}
 const isStandalone=()=>(window.matchMedia&&matchMedia('(display-mode: standalone)').matches)||navigator.standalone===true;
 const isIOS=()=>/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
 
@@ -464,7 +539,7 @@ function parseBackup(text){
 }
 function applyBackup(list){
   let added=0,replaced=0;
-  list.forEach(k=>{if(kids[k.id])replaced++;else added++;migrate(k);k.updated=Date.now();kids[k.id]=k});
+  list.forEach(k=>{if(kids[k.id])replaced++;else added++;migrate(k);k.updated=Date.now();kids[k.id]=k;markDirty(k.id)});scheduleSync();
   saveLocal();
   return 'Restored '+list.length+' player'+(list.length>1?'s':'')+(replaced?' ('+replaced+' replaced, '+added+' added)':'')+'.';
 }
@@ -796,6 +871,7 @@ function render(){
   lastScreen=screen;
   if(same&&top){const n=$app.querySelector('.screen');if(n)n.scrollTop=top}
   if(screen==='play')drawPlay();
+  if(screen==='parent'&&SYNC_URL&&prefs.famId&&!view.fetching&&Date.now()-famFetchedAt>30000){view.fetching=true;const v=view;fetchFamily().then(ok=>{if(ok&&screen==='parent'&&view===v)render()})}
 }
 function ensureSel(){
   const sel=$app.querySelector('.cell.sel'),pad=$app.querySelector('.sheetpad');if(!sel)return;
@@ -819,6 +895,7 @@ function Profiles(){
         <p style="font-size:1.25rem;max-width:34ch">Math facts practice for kids: one-at-a-time practice, beat-the-clock drills, worksheets with red-pen checking, and races against Robo.</p>
         <div class="row"><button class="btn primary big" data-act="addkid">Add your first player</button></div>
         <p class="muted">Each kid gets their own player with saved progress, stars, and stickers.</p>
+        <div class="row"><button class="btn ghost" data-act="gate">Grown-ups: see your family's progress</button></div>
         ${installTip()}
       </div>
       <div class="panel sample"><div style="position:relative">${probHTML(sample,'',42)}<span class="okmark" style="right:-26px;top:-14px">✓</span></div></div>
@@ -1144,9 +1221,12 @@ function grade(force){
 
 /* ---------- parent view ---------- */
 function Parent(){
-  const list=Object.values(kids).sort((a,b)=>a.created-b.created);
-  if(!list.length)return `<div class="screen"><div class="topbar"><button class="btn ghost" data-act="home0">‹ Back</button><h2>Grown-ups</h2><span></span></div><div class="panel"><p>No players yet. Add one from the start screen.</p></div></div>`;
-  const k=kids[view.id]||list[0];
+  const local=Object.values(kids).sort((a,b)=>a.created-b.created);
+  const remote=Object.values(remoteKids).filter(x=>!kids[x.id]).sort((a,b)=>a.created-b.created);
+  const list=local.concat(remote);
+  const pinPanel=`<div class="panel spread"><div><h3>Grown-up PIN</h3><p class="muted">Needed to open this screen, change the math, or add a player. The screen stays unlocked for 5 minutes or until you go back to a kid's screen.</p></div><button class="btn" data-act="pinchange">Change PIN</button></div>`;
+  if(!list.length)return `<div class="screen"><div class="topbar"><button class="btn ghost" data-act="home0">‹ Back</button><h2>Grown-ups</h2><span></span></div><div class="panel"><p>No players on this device yet.${SYNC_URL?' To see your kids\' progress from their tablets, join your family below.':' Add one from the start screen.'}</p></div>${familyPanel()}${backupPanel()}${pinPanel}</div>`;
+  const k=kids[view.id]||remoteKids[view.id]||list[0],isRemote=!kids[k.id];
   const A=attempts(k),R=rights(k),ms=sum(Object.values(k.totals).map(t=>t[2]));
   const days=[];for(let i=13;i>=0;i--){const d=new Date();d.setDate(d.getDate()-i);days.push({d,n:k.days[dayKey(d)]||0})}
   const week=sum(days.slice(7).map(x=>x.n));
@@ -1156,7 +1236,8 @@ function Parent(){
   const modeName={practice:'Practice',clock:'Beat the Clock',sheet:'Worksheet',race:'Race'};
   return `<div class="screen">
     <div class="topbar"><button class="btn ghost" data-act="home0">‹ Back</button><h2>Grown-ups</h2><span style="width:60px"></span></div>
-    <div class="tabs">${list.map(x=>`<button class="chip ${x.id===k.id?'on':''}" data-act="ptab" data-v="${x.id}">${avHTML(x.avatar)} ${esc(x.name)}</button>`).join('')}</div>
+    <div class="tabs">${list.map(x=>`<button class="chip ${x.id===k.id?'on':''}" data-act="ptab" data-v="${x.id}">${avHTML(x.avatar)} ${esc(x.name)}${kids[x.id]?'':' <span class="cloud" aria-label="from another device">☁︎</span>'}</button>`).join('')}</div>
+    ${isRemote?`<div class="panel spread remote"><p><b>${esc(k.name)}'s progress from another device.</b> <span class="muted">Updated ${ago(k._at)}. Change ${esc(k.name)}'s math on their own tablet.</span></p><button class="btn" data-act="famrefresh">Refresh</button></div>`:''}
     <div class="tiles">
       <div class="tile"><span class="label">This week</span><b>${week}</b>problems</div>
       <div class="tile"><span class="label">Accuracy</span><b>${A?Math.round(R/A*100)+'%':'—'}</b>${R} of ${A} right</div>
@@ -1178,18 +1259,19 @@ function Parent(){
       </div>
       <div class="panel" style="display:flex;flex-direction:column;gap:12px"><h3>Settings for ${esc(k.name)}</h3>
         <div class="mathline">${mathSummary(k.settings).map(t=>'<span class="tag">'+esc(t)+'</span>').join('')}</div>
-        <div class="row"><button class="btn" data-act="psettings" data-v="${k.id}">Change the math</button></div>
-        ${growPanel(k)}
-        <div class="row">${view.confirmDel===k.id?`<span><b>Delete ${esc(k.name)} and all progress?</b></span><button class="btn danger" data-act="delkid" data-v="${k.id}">Delete</button><button class="btn" data-act="canceldel">Cancel</button>`:`<button class="btn ghost danger" data-act="askdel" data-v="${k.id}">Delete player</button>`}</div>
+        ${isRemote?'':`<div class="row"><button class="btn" data-act="psettings" data-v="${k.id}">Change the math</button></div>`}
+        ${growPanel(k,isRemote)}
+        ${isRemote?'':`<div class="row">${view.confirmDel===k.id?`<span><b>Delete ${esc(k.name)} and all progress?</b></span><button class="btn danger" data-act="delkid" data-v="${k.id}">Delete</button><button class="btn" data-act="canceldel">Cancel</button>`:`<button class="btn ghost danger" data-act="askdel" data-v="${k.id}">Delete player</button>`}</div>`}
       </div>
     </div>
+    ${familyPanel()}
     ${backupPanel()}
-    <div class="panel spread"><div><h3>Grown-up PIN</h3><p class="muted">Needed to open this screen, change the math, or add a player. The screen stays unlocked for 5 minutes or until you go back to a kid's screen.</p></div><button class="btn" data-act="pinchange">Change PIN</button></div>
+    ${pinPanel}
   </div>`;
 }
-function growPanel(k){
+function growPanel(k,ro){
   const a=adapt(k),s=k.settings;
-  const tog=`<button class="toggle ${a.on?'on':''}" data-act="adapt" data-v="${k.id}" role="switch" aria-checked="${a.on}"><span class="sw"></span>Grow with me: make it harder automatically</button>`;
+  const tog=ro?`<p><b>Grow with me:</b> ${a.on?'on':'off'}</p>`:`<button class="toggle ${a.on?'on':''}" data-act="adapt" data-v="${k.id}" role="switch" aria-checked="${a.on}"><span class="sw"></span>Grow with me: make it harder automatically</button>`;
   if(!a.on)return `<div class="grow">${tog}</div>`;
   const rows=['as','md'].map(tr=>{
     const st=nextStep(s,tr);if(!st)return '';
@@ -1334,6 +1416,14 @@ $app.addEventListener('click',e=>{
     case 'ptab':go('parent',{id:v});break;
     case 'askdel':view.confirmDel=v;render();break;
     case 'canceldel':view.confirmDel=null;render();break;
+    case 'famnew':{const c=newFamCode();view.famMsg='Creating…';view.famErr=false;render();joinFamily(c,true);break;}
+    case 'famjoin':{const c=normFamCode(document.getElementById('famcode').value);if(!c){view.famMsg='That code should be 16 letters and numbers, like ABCD-EFGH-JKLM-NPQR.';view.famErr=true;render();break}view.famMsg='Joining…';view.famErr=false;render();joinFamily(c,false);break;}
+    case 'famshow':view.showCode=!view.showCode;render();break;
+    case 'famcopy':navigator.clipboard.writeText(prefs.famCode).then(()=>toast('Family code copied')).catch(()=>{view.showCode=true;render();toast('Select the code to copy it')});break;
+    case 'famleaveask':view.famLeave=true;render();break;
+    case 'famstay':view.famLeave=false;render();break;
+    case 'famleave':prefs.famId='';prefs.famCode='';prefs.syncDirty={};remoteKids={};famFetchedAt=0;saveLocal();view.famLeave=false;view.famMsg='Syncing is off on this device.';view.famErr=false;render();break;
+    case 'famrefresh':fetchFamily().then(ok=>{toast(ok?'Updated':'Couldn\'t reach the family sync. Check the internet connection.');if(screen==='parent')render()});break;
     case 'delkid':deleteKid(v);go('parent',{});toast('Player deleted');break;
     case 'adapt':{const k=kids[v];if(k){adapt(k).on=!adapt(k).on;saveKid(k);render()}break;}
     case 'hidetip':prefs.tipHidden=true;saveLocal();render();break;
@@ -1368,6 +1458,8 @@ document.addEventListener('keydown',e=>{
 
 /* ---------- boot ---------- */
 loadLocal();
+if(SYNC_URL&&prefs.famId){scheduleSync(2000);window.addEventListener('online',()=>syncNow());document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='hidden')syncNow(true)})}
+if(location.hash==='#grownups')setTimeout(()=>requireGrownup(()=>go('parent')),50);
 render();
 try{if(navigator.storage&&navigator.storage.persist)navigator.storage.persist().catch(()=>{})}catch(e){}
 if('serviceWorker' in navigator&&location.protocol==='https:'){
