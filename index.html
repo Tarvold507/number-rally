@@ -209,6 +209,9 @@ input[type=text]:focus-visible{outline:3px solid var(--sky);outline-offset:1px}
 .toggle.on .sw{background:var(--mint)}
 .toggle.on .sw::after{left:28px}
 .avatars{display:flex;gap:8px;flex-wrap:wrap}
+.avart{display:inline-flex;width:1.3em;height:1.3em;vertical-align:-.3em}
+.avart svg{width:100%;height:100%;display:block}
+.avbtn{display:inline-grid;place-items:center}
 .avbtn{font-size:2.1rem;width:62px;height:62px;border-radius:50%;border:3px solid transparent;background:color-mix(in srgb,var(--pencil) 18%,var(--card));cursor:pointer}
 .avbtn.on{border-color:var(--sky)}
 .levels{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px}
@@ -271,7 +274,11 @@ const $app=document.getElementById('app');
 /* ---------- constants ---------- */
 const OPS={add:{sym:'+',k:'a',label:'Adding'},sub:{sym:'−',k:'s',label:'Taking away'},mul:{sym:'×',k:'m',label:'Times'},div:{sym:'÷',k:'d',label:'Dividing'}};
 const K2OP={a:'add',s:'sub',m:'mul',d:'div'};
-const AVATARS=['🦊','🐼','🐯','🐸','🐙','🦄','🐵','🐨','🦖','🐧'];
+const AVATARS=['🦊','🐼','🐯','🐸','🐙','🦄','🐵','🐨','🦖','🐧','🐴','platypus','🐝'];
+const AV_NAMES={'🦊':'Fox','🐼':'Panda','🐯':'Tiger','🐸':'Frog','🐙':'Octopus','🦄':'Unicorn','🐵':'Monkey','🐨':'Koala','🦖':'Dinosaur','🐧':'Penguin','🐴':'Horse','platypus':'Platypus','🐝':'Bumblebee'};
+const AV_ART={platypus:'<svg viewBox="0 0 64 64" aria-hidden="true"><ellipse cx="11" cy="41" rx="10" ry="6" transform="rotate(-12 11 41)" fill="#6E4326"/><path d="M5 39l12-3M6 43l12-3" stroke="#5A361E" stroke-width="1.2" stroke-linecap="round"/><ellipse cx="25" cy="50" rx="5" ry="2.6" fill="#3E4A5C"/><ellipse cx="39" cy="50" rx="5" ry="2.6" fill="#3E4A5C"/><ellipse cx="31" cy="39" rx="18" ry="11.5" fill="#9C6338"/><ellipse cx="32" cy="44" rx="12" ry="4.5" fill="#C28B5B"/><circle cx="45" cy="32" r="10" fill="#9C6338"/><ellipse cx="56" cy="35.5" rx="8.5" ry="4.8" fill="#3E4A5C"/><ellipse cx="57" cy="34.2" rx="6" ry="2" fill="#56647A"/><circle cx="46.5" cy="28.5" r="2.3" fill="#1D2B4F"/><circle cx="47.3" cy="27.7" r=".8" fill="#FFFFFF"/></svg>'};
+const avHTML=a=>AV_ART[a]?'<span class="avart">'+AV_ART[a]+'</span>':esc(a);
+const avName=a=>AV_NAMES[a]||'Animal';
 const RACERS=[{e:'🚗',s:0},{e:'🛵',s:40},{e:'🚜',s:100},{e:'🏎️',s:200},{e:'🚀',s:350},{e:'🛸',s:600},{e:'🐉',s:1000}];
 const LEVELS={
   start:{name:'Just starting',sub:'Adding within 5 · ages 5–6',s:{ops:['add'],addMax:5,mulMax:5,practiceLen:10,sheetLen:12}},
@@ -497,7 +504,7 @@ function Profiles(){
     <div class="topbar"><div class="brand"><h1><span>Number Rally</span></h1></div><div class="row">${soundBtn()}</div></div>
     <h2>Who's playing?</h2>
     <div class="kids">
-      ${list.map(k=>`<button class="kidcard" data-act="pickkid" data-id="${k.id}"><span class="avatar">${k.avatar}</span><span class="name">${esc(k.name)}</span><span class="row" style="justify-content:center;gap:8px"><span class="pill"><span class="star">★</span>${k.stars}</span>${streak(k)>1?'<span class="pill">🔥 '+streak(k)+'</span>':''}</span></button>`).join('')}
+      ${list.map(k=>`<button class="kidcard" data-act="pickkid" data-id="${k.id}"><span class="avatar">${avHTML(k.avatar)}</span><span class="name">${esc(k.name)}</span><span class="row" style="justify-content:center;gap:8px"><span class="pill"><span class="star">★</span>${k.stars}</span>${streak(k)>1?'<span class="pill">🔥 '+streak(k)+'</span>':''}</span></button>`).join('')}
       <button class="kidcard add" data-act="addkid"><span class="plus">+</span><span class="name" style="font-size:1.2rem">Add player</span></button>
     </div>
     ${installTip()}
@@ -515,7 +522,7 @@ function AddKid(){
     <div class="topbar"><button class="btn ghost" data-act="home0">‹ Back</button><h2>New player</h2><span style="width:60px"></span></div>
     <div class="panel" style="display:flex;flex-direction:column;gap:18px">
       <div class="field"><label class="label" for="kname">Name</label><input type="text" id="kname" maxlength="16" autocomplete="off" placeholder="Type a name" value="${esc(view.name||'')}"></div>
-      <div class="field"><span class="label">Pick an animal</span><div class="avatars">${AVATARS.map(x=>`<button class="avbtn ${x===a?'on':''}" data-act="av" data-v="${x}" aria-label="Avatar ${x}">${x}</button>`).join('')}</div></div>
+      <div class="field"><span class="label">Pick an animal</span><div class="avatars">${AVATARS.map(x=>`<button class="avbtn ${x===a?'on':''}" data-act="av" data-v="${x}" aria-label="${avName(x)}" title="${avName(x)}">${avHTML(x)}</button>`).join('')}</div></div>
       <div class="field"><span class="label">Where to start</span><div class="levels">${Object.entries(LEVELS).map(([key,L])=>`<button class="level ${key===lv?'on':''}" data-act="lv" data-v="${key}"><b>${L.name}</b><span class="muted">${L.sub}</span></button>`).join('')}</div>
       <p class="muted">You can change the numbers and operations any time.</p></div>
       <div class="row"><button class="btn primary big" data-act="createkid">Let's go!</button></div>
@@ -526,7 +533,7 @@ function Home(){
   const unlocked=RACERS.filter(r=>k.stars>=r.s);
   const next=RACERS.find(r=>k.stars<r.s);
   return `<div class="screen">
-    <div class="topbar"><div class="who"><button class="btn ghost" data-act="home0" aria-label="Switch player">‹</button><span class="avatar" style="width:56px;height:56px;font-size:2.1rem">${k.avatar}</span><h2>${esc(k.name)}</h2></div>
+    <div class="topbar"><div class="who"><button class="btn ghost" data-act="home0" aria-label="Switch player">‹</button><span class="avatar" style="width:56px;height:56px;font-size:2.1rem">${avHTML(k.avatar)}</span><h2>${esc(k.name)}</h2></div>
       <div class="row">${st>0?'<span class="pill">🔥 '+st+' day'+(st>1?'s':'')+'</span>':''}${starPill()}${soundBtn()}</div></div>
     <div class="modes">
       <button class="mode m-practice" data-act="start" data-v="practice">${ICONS.practice}<h3>Practice</h3><p>${s.practiceLen} problems, one at a time. Misses come back.</p></button>
@@ -565,7 +572,7 @@ function Settings(){
         <span class="label">Worksheet size</span>${seg('sheetLen',[12,20,30],s.sheetLen,v=>v+' problems')}
         <span class="label">Beat the Clock</span>${seg('clockMin',[1,2,3],s.clockMin,v=>v+' min')}</div>
       <div class="panel field"><span class="label">Player</span><input type="text" id="sname" maxlength="16" value="${esc(k.name)}" aria-label="Player name">
-        <div class="avatars">${AVATARS.map(x=>`<button class="avbtn ${x===k.avatar?'on':''}" data-act="setav" data-v="${x}" aria-label="Avatar ${x}">${x}</button>`).join('')}</div></div>
+        <div class="avatars">${AVATARS.map(x=>`<button class="avbtn ${x===k.avatar?'on':''}" data-act="setav" data-v="${x}" aria-label="${avName(x)}" title="${avName(x)}">${avHTML(x)}</button>`).join('')}</div></div>
     </div></div>`;
 }
 
@@ -699,7 +706,7 @@ function Result(){
   const r=run,res=r.res,acc=(r.right+r.wrong)?Math.round(r.right/(r.right+r.wrong)*100):0;
   const secs=Math.round((Date.now()-r.start)/1000);
   return `<div class="screen"><div class="result">
-    <div class="avatar" style="width:110px;height:110px;font-size:4rem">${r.mode==='race'?(res.won?kid.racer:'🤖'):kid.avatar}</div>
+    <div class="avatar" style="width:110px;height:110px;font-size:4rem">${r.mode==='race'?(res.won?kid.racer:'🤖'):avHTML(kid.avatar)}</div>
     <h1>${esc(res.headline)}</h1><p style="font-size:1.2rem">${esc(res.sub)}</p>
     <div class="stars"><span class="star">★</span> +${res.stars}</div>
     ${res.bonus?'<p class="muted">Includes a '+res.bonus+'-star bonus.</p>':''}
@@ -775,7 +782,7 @@ function Parent(){
   const modeName={practice:'Practice',clock:'Beat the Clock',sheet:'Worksheet',race:'Race'};
   return `<div class="screen">
     <div class="topbar"><button class="btn ghost" data-act="home0">‹ Back</button><h2>Grown-ups</h2><span style="width:60px"></span></div>
-    <div class="tabs">${list.map(x=>`<button class="chip ${x.id===k.id?'on':''}" data-act="ptab" data-v="${x.id}">${x.avatar} ${esc(x.name)}</button>`).join('')}</div>
+    <div class="tabs">${list.map(x=>`<button class="chip ${x.id===k.id?'on':''}" data-act="ptab" data-v="${x.id}">${avHTML(x.avatar)} ${esc(x.name)}</button>`).join('')}</div>
     <div class="tiles">
       <div class="tile"><span class="label">This week</span><b>${week}</b>problems</div>
       <div class="tile"><span class="label">Accuracy</span><b>${A?Math.round(R/A*100)+'%':'—'}</b>${R} of ${A} right</div>
