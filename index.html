@@ -181,7 +181,7 @@ button{font:inherit;color:inherit}
   background:repeating-conic-gradient(var(--ink) 0 25%,var(--card) 0 50%) 0 0/8px 8px;opacity:.75}
 
 /* worksheet */
-.sheet{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px}
+.sheet{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:10px}
 .cell{background:var(--card);border:2px solid var(--line);border-radius:16px;padding:12px 14px 10px;display:grid;justify-items:end;cursor:pointer;position:relative;--sz:2rem;text-align:right}
 .cell.sel{border-color:var(--sky);box-shadow:0 0 0 3px color-mix(in srgb,var(--sky) 30%,transparent)}
 .cell .num{position:absolute;left:10px;top:8px;font-size:.75rem;font-weight:700;color:var(--ink-soft)}
@@ -260,6 +260,18 @@ input[type=text]:focus-visible{outline:3px solid var(--sky);outline-offset:1px}
 .toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--paper);padding:.6em 1.1em;border-radius:14px;font-weight:700;z-index:50}
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 [hidden]{display:none!important}
+.colgrid{display:inline-grid;column-gap:.12em;row-gap:.08em;font-weight:800;font-size:min(calc(var(--sz,5rem)*.78),11vw);line-height:1;font-variant-numeric:tabular-nums;align-items:center;justify-items:center}
+.colgrid .op{color:var(--ink-soft);padding-right:.1em}
+.colgrid .dg{padding:0 .04em;cursor:pointer;border-radius:.1em}
+.colgrid .dg.x{text-decoration:line-through;text-decoration-color:var(--redpen);text-decoration-thickness:.09em;color:var(--ink-soft)}
+.colgrid .scr{font-size:.42em;width:1.7em;height:1.7em;border:2px dashed var(--line);border-radius:.35em;display:grid;place-items:center;color:var(--redpen);cursor:pointer}
+.colgrid .scr.sel{border-style:solid;border-color:var(--redpen);background:color-mix(in srgb,var(--redpen) 10%,transparent)}
+.colgrid .cbar{grid-column:1/-1;height:.075em;min-height:3px;background:var(--ink);width:100%;border-radius:3px;margin:.04em 0}
+.colgrid .abox{width:1em;height:1.2em;border:.05em dashed var(--line);border-radius:.15em;display:grid;place-items:center;color:var(--sky);cursor:pointer}
+.colgrid .abox.sel{border-style:solid;border-color:var(--sky);background:color-mix(in srgb,var(--sky) 12%,transparent)}
+.colgrid .abox.sel:empty::after{content:"";width:.06em;height:.8em;background:var(--sky);animation:blink 1s steps(2) infinite}
+.cell .colgrid{font-size:1.55rem}
+.cell .colgrid .scr{border-width:1.5px;min-width:24px;min-height:24px;font-size:.6em}
 .famcode{font-family:var(--body);font-weight:800;font-size:1.1rem;letter-spacing:.06em;background:color-mix(in srgb,var(--sky) 10%,var(--card));border:2px solid var(--line);border-radius:10px;padding:.25em .6em}
 .panel.remote{border-color:color-mix(in srgb,var(--sky) 45%,var(--line));background:color-mix(in srgb,var(--sky) 8%,var(--card))}
 .cloud{color:inherit;opacity:.8}
@@ -345,15 +357,15 @@ const LEVELS={
   tables:{name:'Times tables',sub:'× and ÷ up to 10 · ages 8–10',s:{ops:['mul','div'],addMax:100,mulMax:10,practiceLen:20,sheetLen:20}}
 };
 const RACE_TARGET=12;
-const EXTRAS={miss:'? Missing number',cmp:'< > Compare',round:'≈ Rounding',place:'Place value',time:'Telling time',money:'Money'};
-const KIND_LABEL={add:'+ Adding',sub:'− Taking away',mul:'× Times',div:'÷ Dividing',miss:'? Missing number',cmp:'< > Compare',round:'≈ Rounding',place:'Place value',time:'Telling time',money:'Money'};
+const EXTRAS={mmul:'34×6 Big times',miss:'? Missing number',cmp:'< > Compare',round:'≈ Rounding',place:'Place value',time:'Telling time',money:'Money'};
+const KIND_LABEL={add:'+ Adding',sub:'− Taking away',mul:'× Times',div:'÷ Dividing',mmul:'× Big times',miss:'? Missing number',cmp:'< > Compare',round:'≈ Rounding',place:'Place value',time:'Telling time',money:'Money'};
 const ALL_KINDS=Object.keys(KIND_LABEL);
-const TOPIC_NAME={add:'Adding',sub:'Taking away',mul:'Times',div:'Dividing',miss:'Missing number',cmp:'Compare',round:'Rounding',place:'Place value',time:'Telling time',money:'Money',all:'Mix it all'};
-const TOPIC_ICON={add:'+',sub:'−',mul:'×',div:'÷',miss:'?',cmp:'&lt;&gt;',round:'≈',place:'<span class="pv2">1</span><span class="pv1">2</span><span class="pv0">3</span>',time:'<svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round"><circle cx="24" cy="24" r="19"/><path d="M24 13v11l7 5"/></svg>',money:'¢',all:'<svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"><path d="M6 14h8c8 0 12 20 20 20h8M6 34h8c3 0 5-3 7-7M27 21c2-4 4-7 7-7h8M38 9l5 5-5 5M38 29l5 5-5 5"/></svg>'};
+const TOPIC_NAME={add:'Adding',sub:'Taking away',mul:'Times',div:'Dividing',mmul:'Big times',miss:'Missing number',cmp:'Compare',round:'Rounding',place:'Place value',time:'Telling time',money:'Money',all:'Mix it all'};
+const TOPIC_ICON={add:'+',sub:'−',mul:'×',div:'÷',mmul:'<span style="font-size:.6em">34×6</span>',miss:'?',cmp:'&lt;&gt;',round:'≈',place:'<span class="pv2">1</span><span class="pv1">2</span><span class="pv0">3</span>',time:'<svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round"><circle cx="24" cy="24" r="19"/><path d="M24 13v11l7 5"/></svg>',money:'¢',all:'<svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"><path d="M6 14h8c8 0 12 20 20 20h8M6 34h8c3 0 5-3 7-7M27 21c2-4 4-7 7-7h8M38 9l5 5-5 5M38 29l5 5-5 5"/></svg>'};
 const kindsOf=s=>{const ks=s.ops.concat(s.extras||[]);return ks.length?ks:['add']};
 const topicLabel=t=>t&&t!=='all'?TOPIC_NAME[t]:'';
 /* ---------- stickers ---------- */
-const TOPIC_STICKERS={add:['Adder','Sum Sleuth','Addition Ace'],sub:['Take-Away Kid','Borrow Boss','Subtraction Star'],mul:['Times Rookie','Table Tamer','Times Master'],div:['Fair Sharer','Divide & Conquer','Division Dynamo'],miss:['Detective','Mystery Solver','Master Detective'],cmp:['Gator Eyes','Number Judge','Compare Champ'],round:['Rounder','Round-Up Pro','Rounding Royal'],place:['Bead Counter','Place Pro','Value Wizard'],time:['Tick Tock','Clock Reader','Time Keeper'],money:['Penny Saver','Coin Counter','Money Bags']};
+const TOPIC_STICKERS={mmul:['Big Multiplier','Times Tower','Multiplication Hero'],add:['Adder','Sum Sleuth','Addition Ace'],sub:['Take-Away Kid','Borrow Boss','Subtraction Star'],mul:['Times Rookie','Table Tamer','Times Master'],div:['Fair Sharer','Divide & Conquer','Division Dynamo'],miss:['Detective','Mystery Solver','Master Detective'],cmp:['Gator Eyes','Number Judge','Compare Champ'],round:['Rounder','Round-Up Pro','Rounding Royal'],place:['Bead Counter','Place Pro','Value Wizard'],time:['Tick Tock','Clock Reader','Time Keeper'],money:['Penny Saver','Coin Counter','Money Bags']};
 const TIERS=[25,100,250];
 const rightOf=(k,x)=>k.totals[x]?k.totals[x][0]:0;
 const triedOf=(k,x)=>k.totals[x]?k.totals[x][0]+k.totals[x][1]:0;
@@ -405,7 +417,8 @@ function nextGoal(k){
 }
 const TIME_LV=['Hour','Half hour','Quarter hour','5 minutes','Any minute'];
 const MONEY_LV=['Pennies, nickels & dimes','Add quarters (under $1)','Add dollars (up to $10)'];
-const DEF_SETTINGS={ops:['add'],extras:[],addMax:10,neg:false,mulMax:10,tables:[],rem:false,placeMax:100,timeLevel:2,moneyLevel:1,practiceLen:20,sheetLen:20,clockMin:1};
+const MMUL_LV=['2-digit × 1-digit (like 34 × 6)','3-digit × 1-digit (like 247 × 6)'];
+const DEF_SETTINGS={ops:['add'],extras:[],addMax:10,neg:false,mulMax:10,tables:[],rem:false,placeMax:100,timeLevel:2,moneyLevel:1,mmulLevel:1,colEntry:true,practiceLen:20,sheetLen:20,clockMin:1};
 const ICONS={
   practice:'<svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round"><circle cx="24" cy="24" r="19"/><circle cx="24" cy="24" r="11"/><circle cx="24" cy="24" r="3" fill="currentColor"/></svg>',
   clock:'<svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round"><circle cx="24" cy="27" r="17"/><path d="M24 27V17M19 5h10M24 5v5M37 12l3-3"/></svg>',
@@ -587,6 +600,7 @@ function mathSummary(s){
   if(pv.length)out.push(pv.join(', ')+' to '+s.placeMax.toLocaleString('en-US'));
   if(ex.includes('time'))out.push('Time: '+TIME_LV[s.timeLevel-1].toLowerCase());
   if(ex.includes('money'))out.push('Money: '+MONEY_LV[s.moneyLevel-1].toLowerCase());
+  if(ex.includes('mmul'))out.push('Big times: '+MMUL_LV[s.mmulLevel-1].replace(/ \(.*\)/,''));
   return out.map(x=>x.trim());
 }
 
@@ -663,7 +677,22 @@ function makeMoney(s){
   }
   return {kind:'money',input:'cents',coins:[10,5],ans:15,ansText:'15¢',key:'m10-5',track:false};
 }
-function makeExtra(s,kind){return ({miss:makeMiss,cmp:makeCmp,round:makeRound,place:makePlace,time:makeTime,money:makeMoney})[kind](s)}
+function makeMmul(s){
+  const lv=s.mmulLevel||1,a=lv===1?ri(12,99):ri(102,999),b=ri(2,9),ans=a*b;
+  return {kind:'mmul',input:'num',a,b,op:'mul',ans,ansText:String(ans),key:'M'+a+'x'+b,track:false};
+}
+/* ----- answer boxes (ones first) ----- */
+function resetCol(p){p.boxes=Array(p.W).fill('');p.sel=p.W-1;p.ssel=null;p.scratch=Array(p.W).fill('');p.cross=Array(p.W).fill(false)}
+function colify(s,p){
+  if(!s.colEntry||p.input!=='num')return p;
+  const la=String(p.a).length,lb=String(p.b).length;
+  if((p.kind==='add'||p.kind==='sub')&&Math.max(p.a,p.b)>=10&&p.ans>=0)p.W=p.kind==='add'?Math.max(la,lb)+1:la;
+  else if(p.kind==='mmul')p.W=la+lb;
+  else return p;
+  p.input='col';resetCol(p);return p;
+}
+function colTyped(p){return p.boxes.every(c=>!c)?'':p.boxes.map(c=>c||'_').join('')}
+function makeExtra(s,kind){return ({mmul:makeMmul,miss:makeMiss,cmp:makeCmp,round:makeRound,place:makePlace,time:makeTime,money:makeMoney})[kind](s)}
 function fits(s,a,op,b){
   if(!s.ops.includes(op))return false;
   const tb=s.tables||[];
@@ -690,7 +719,7 @@ function gen(k,last,topic){
   let p;
   for(let i=0;i<20;i++){
     const kind=pick(ks);
-    p=OPS[kind]?((Math.random()<.3&&weakPick(k,kind))||fresh(s,kind)):makeExtra(s,kind);
+    p=colify(s,OPS[kind]?((Math.random()<.3&&weakPick(k,kind))||fresh(s,kind)):makeExtra(s,kind));
     if(p.key!==last)return p;
   }
   return p;
@@ -699,6 +728,7 @@ function gen(k,last,topic){
 function checkAns(p,t){
   t=String(t||'');
   if(p.input==='cmp')return t===p.ans;
+  if(p.input==='col'){const v=t.replace(/^_+/,'');return v!==''&&!v.includes('_')&&parseInt(v,10)===p.ans}
   if(p.input==='rem'){const m=/^(\d+)(?:R(\d*))?$/.exec(t);return !!m&&+m[1]===p.ans.q&&+(m[2]||0)===p.ans.r}
   if(p.input==='time'){let h,mm;if(t.includes(':')){const z=t.split(':');if(!z[0]||z[1].length!==2)return false;h=+z[0];mm=+z[1]}else{if(t.length<3)return false;h=+t.slice(0,-2);mm=+t.slice(-2)}return h===p.ans.h&&mm===p.ans.m}
   if(p.input==='money'){if(!/^\d*\.?\d{0,2}$/.test(t)||!/\d/.test(t))return false;return Math.round(parseFloat(t)*100)===p.ans}
@@ -706,6 +736,15 @@ function checkAns(p,t){
 }
 const isBlank=t=>t===''||t==='-';
 function applyKey(p,t,k){
+  if(p.input==='col'){
+    if(!p.boxes)resetCol(p);
+    if(k==='left'){p.ssel=null;p.sel=Math.max(0,p.sel-1);return colTyped(p)}
+    if(k==='right'){p.ssel=null;p.sel=Math.min(p.W-1,p.sel+1);return colTyped(p)}
+    if(k==='back'){if(p.ssel!=null){p.scratch[p.ssel]='';p.ssel=null}else if(p.boxes[p.sel])p.boxes[p.sel]='';else if(p.sel<p.W-1){p.sel++;p.boxes[p.sel]=''}return colTyped(p)}
+    if(!/^\d$/.test(k))return colTyped(p);
+    if(p.ssel!=null){p.scratch[p.ssel]=k;p.ssel=null;return colTyped(p)}
+    p.boxes[p.sel]=k;if(p.sel>0)p.sel--;return colTyped(p);
+  }
   if(k==='back')return t.slice(0,-1);
   if(p.input==='cmp')return '<=>'.includes(k)?k:t;
   if(k==='-')return p.input==='num'?(t.startsWith('-')?t.slice(1):'-'+t):t;
@@ -801,13 +840,26 @@ function record(k,p,ok,ms){
   const dk=dayKey();if(!k.days[dk]&&k.stats)k.stats.days++;k.days[dk]=(k.days[dk]||0)+1;
   if(ok)k.stars++;
 }
+function colHTML(p,interactive){
+  const W=p.W,A=String(p.a).padStart(W,' ').split(''),B=String(p.b).padStart(W,' ').split('');
+  const at=act=>interactive?` data-act="${act}"${p.cellIdx!=null?` data-cell="${p.cellIdx}"`:''}`:'';
+  let h=`<div class="colgrid" style="grid-template-columns:auto repeat(${W},1.08em)" aria-label="${p.a} ${OPS[p.op].label} ${p.b}">`;
+  for(let c=0;c<W;c++){const v=p.scratch[c];if(interactive||v)h+=`<span class="scr${interactive&&p.ssel===c?' sel':''}" style="grid-row:1;grid-column:${c+2}"${at('colscr')} data-v="${c}" aria-label="Carry box">${esc(v||'')}</span>`}
+  for(let c=0;c<W;c++)if(A[c]!==' ')h+=`<span class="dg${p.cross[c]?' x':''}" style="grid-row:2;grid-column:${c+2}"${at('colx')} data-v="${c}">${A[c]}</span>`;
+  h+=`<span class="op" style="grid-row:3;grid-column:1">${OPS[p.op].sym}</span>`;
+  for(let c=0;c<W;c++)if(B[c]!==' ')h+=`<span class="dg" style="grid-row:3;grid-column:${c+2}">${B[c]}</span>`;
+  h+=`<span class="cbar" style="grid-row:4"></span>`;
+  for(let c=0;c<W;c++)h+=`<span class="abox${interactive&&p.ssel==null&&p.sel===c?' sel':''}" style="grid-row:5;grid-column:${c+2}"${at('colbox')} data-v="${c}">${esc(p.boxes[c]||'')}</span>`;
+  return h+'</div>';
+}
 function probHTML(p,typed,showAns){
+  if(p.input==='col')return colHTML(p,showAns==null);
   const val=showAns!=null?showAns:typed,empty=showAns==null&&val==='',txt=esc(fmtTyped(p,val));
   const cls='ans'+(empty?' empty':'');
   const B=`<span class="${cls} box${p.input==='cmp'?' cmpbox':''}">${txt}</span>`;
   switch(p.kind){
     case 'div':return '<div class="ldiv" aria-label="'+p.a+' divided by '+p.b+'"><div class="q '+cls+'">'+txt+'</div><div class="dvs">'+p.b+'</div><div class="dvd">'+p.a+'</div></div>';
-    case 'add':case 'sub':case 'mul':return '<div class="stack" aria-label="'+p.a+' '+OPS[p.op].label+' '+p.b+'"><div>'+p.a+'</div><div class="oprow"><span class="op">'+OPS[p.op].sym+'</span><span>'+p.b+'</span></div><div class="bar"></div><div class="'+cls+'">'+txt+'</div></div>';
+    case 'add':case 'sub':case 'mul':case 'mmul':return '<div class="stack" aria-label="'+p.a+' '+OPS[p.op].label+' '+p.b+'"><div>'+p.a+'</div><div class="oprow"><span class="op">'+OPS[p.op].sym+'</span><span>'+p.b+'</span></div><div class="bar"></div><div class="'+cls+'">'+txt+'</div></div>';
     case 'miss':return `<div class="eq" aria-label="${esc(p.parts.map(x=>x===null?'blank':x).join(' '))}">${p.parts.map(x=>x===null?B:`<span>${esc(x)}</span>`).join('')}</div>`;
     case 'cmp':return `<div class="eq" aria-label="Compare ${p.a} and ${p.b}"><span>${p.a}</span>${B}<span>${p.b}</span></div>`;
     case 'round':return `<div class="qa" aria-label="Round ${p.n} to the nearest ${p.place}"><div class="prompt">Round to the nearest ${p.place}</div><div class="bignum">${p.n}</div><div class="ansline"><span class="sym">≈</span>${B}</div></div>`;
@@ -989,6 +1041,7 @@ function topicSub(s,t){
     case 'round':case 'place':return 'Numbers up to '+s.placeMax.toLocaleString('en-US');
     case 'time':return 'To the '+TIME_LV[s.timeLevel-1].toLowerCase();
     case 'money':return MONEY_LV[s.moneyLevel-1];
+    case 'mmul':return MMUL_LV[s.mmulLevel-1];
     case 'all':return 'A little of everything';
   }
   return '';
@@ -1027,6 +1080,9 @@ function Settings(){
       <div class="panel field" ${['cmp','round','place'].some(x=>ex.includes(x))?'':'hidden'}><span class="label">Compare, rounding & place value: numbers up to</span>${seg('placeMax',[100,1000,10000],s.placeMax,v=>v.toLocaleString('en-US'))}
         <p class="muted">Place value digits use the Montessori colors: green units, blue tens, red hundreds, green thousands.</p></div>
       <div class="panel field" ${ex.includes('time')?'':'hidden'}><span class="label">Telling time: read the clock to the</span>${seg('timeLevel',[1,2,3,4,5],s.timeLevel,v=>TIME_LV[v-1])}</div>
+      <div class="panel field" ${ex.includes('mmul')?'':'hidden'}><span class="label">Big times</span>${seg('mmulLevel',[1,2],s.mmulLevel,v=>MMUL_LV[v-1])}</div>
+      <div class="panel field"><span class="label">Answer boxes</span>${tog('colEntry',s.colEntry,'Ones first, with carry and borrow boxes')}
+        <p class="muted">For bigger stacked problems (like 47 + 38 or 34 × 6), kids fill in the answer one column at a time starting with the ones, like on paper. Small boxes above each column hold carried numbers, and tapping a top digit crosses it out for borrowing.</p></div>
       <div class="panel field" ${ex.includes('money')?'':'hidden'}><span class="label">Money: count the coins</span>${seg('moneyLevel',[1,2,3],s.moneyLevel,v=>MONEY_LV[v-1])}</div>
       <div class="panel field"><span class="label">Grow with me</span>${(()=>{const on=adapt(k).on;return `<button class="toggle ${on?'on':''}" data-act="adapt" data-v="${k.id}" role="switch" aria-checked="${on}"><span class="sw"></span>Make it harder automatically</button>`})()}
         <p class="muted">After ${WINDOW} answers in a row at ${NEED_ACC*100}% right and a quick pace, the app takes one small step up, at most once a day. Changing the math here starts the count over.</p></div>
@@ -1045,7 +1101,7 @@ function startRun(mode,topic){
   kid.lastTopic=Object.assign(kid.lastTopic||{},{[mode]:topic});
   if(mode==='sheet'){
     const probs=[];let last='';
-    for(let i=0;i<s.sheetLen;i++){const p=gen(kid,last,topic);probs.push(p);last=p.key}
+    for(let i=0;i<s.sheetLen;i++){const p=gen(kid,last,topic);p.cellIdx=i;probs.push(p);last=p.key}
     run={mode,topic,probs,typed:probs.map(()=>''),sel:0,start:Date.now(),graded:false,warn:false,stars0:kid.stars};
     go('sheet');return;
   }
@@ -1063,6 +1119,7 @@ function nextProb(){
   const r=run;r.typed='';
   const due=r.retry.findIndex(x=>x.at<=r.i);
   r.cur=due>=0?r.retry.splice(due,1)[0].p:gen(kid,r.cur&&r.cur.key,r.topic);
+  if(r.cur.input==='col')resetCol(r.cur);
   r.t0=Date.now();
 }
 function Play(){
@@ -1107,7 +1164,7 @@ function key(k){
   const r=run;if(!r||r.lock||r.done)return;
   if(k==='go'){submit();return}
   const nt=applyKey(r.cur,r.typed,k);
-  if(nt!==r.typed){r.typed=nt;sfx.tap();drawPlay()}
+  if(nt!==r.typed||r.cur.input==='col'){r.typed=nt;sfx.tap();drawPlay()}
 }
 function submit(){
   const r=run;if(!r||isBlank(r.typed)||r.lock)return;
@@ -1417,6 +1474,14 @@ $app.addEventListener('click',e=>{
     case 'stickers':sfx.tap();go('stickers');break;
     case 'pick':sfx.tap();if(kindsOf(kid.settings).length<2)startRun(v,'all');else go('pick',{mode:v});break;
     case 'quit':if(run){run.done=true;saveKid(kid)}go('home');break;
+    case 'colbox':case 'colscr':case 'colx':{
+      let q=null;
+      if(screen==='play'&&run&&!run.lock&&!run.done)q=run.cur;
+      else if(screen==='sheet'&&run&&!run.graded){const i=+b.dataset.cell;if(!isNaN(i)){run.sel=i;run.warn=false}q=run.probs[run.sel]}
+      if(!q||q.input!=='col')break;
+      if(a==='colbox'){q.ssel=null;q.sel=+v}else if(a==='colscr')q.ssel=q.ssel===+v?null:+v;else q.cross[+v]=!q.cross[+v];
+      sfx.tap();if(screen==='play')drawPlay();else{render();ensureSel()}
+      break;}
     case 'cell':if(!run.graded){run.sel=+v;run.warn=false;sfx.tap();render();ensureSel()}break;
     case 'grade':grade(v==='force');break;
     case 'nowarn':run.warn=false;render();break;
@@ -1459,7 +1524,7 @@ document.addEventListener('keydown',e=>{
   if(e.target&&e.target.tagName==='INPUT'){if(e.key==='Enter'&&screen==='add'){$app.querySelector('[data-act="createkid"]')?.click()}return}
   if(screen!=='play'&&screen!=='sheet')return;
   let k=null;
-  if(/^[0-9]$/.test(e.key))k=e.key;else if(e.key==='Backspace')k='back';else if(e.key==='Enter')k='go';else if(e.key==='r'||e.key==='R')k='R';else if('-:.<>='.includes(e.key))k=e.key;
+  if(/^[0-9]$/.test(e.key))k=e.key;else if(e.key==='Backspace')k='back';else if(e.key==='Enter')k='go';else if(e.key==='r'||e.key==='R')k='R';else if(e.key==='ArrowLeft')k='left';else if(e.key==='ArrowRight')k='right';else if('-:.<>='.includes(e.key))k=e.key;
   if(!k)return;
   e.preventDefault();
   if(screen==='play')key(k);else sheetKey(k);
