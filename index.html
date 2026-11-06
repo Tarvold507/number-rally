@@ -427,10 +427,15 @@ const sum=a=>a.reduce((x,y)=>x+y,0);
 const LS='numberRally.v1';
 let kids={};
 let prefs={sound:true,lastBackup:0,tipHidden:false,pinHash:'',pinFails:0,pinLockUntil:0,famId:'',famCode:'',syncDirty:{},lastSyncAt:0};
-function loadLocal(){try{const t=localStorage.getItem(LS);if(t){const o=JSON.parse(t);kids=o.kids||{};prefs=Object.assign(prefs,o.prefs||{})}}catch(e){}
+const LS_BAK=LS+'.backup';
+function readStore(key){try{const t=localStorage.getItem(key);if(!t)return null;const o=JSON.parse(t);return o&&typeof o==='object'?o:null}catch(e){return null}}
+function loadLocal(){
+  let o=readStore(LS);const b=readStore(LS_BAK);
+  if((!o||!o.kids||!Object.keys(o.kids).length)&&b&&b.kids&&Object.keys(b.kids).length)o=b;
+  if(o){kids=o.kids||{};prefs=Object.assign(prefs,o.prefs||{})}
   Object.values(kids).forEach(migrate)}
 let saveFailed=false;
-function saveLocal(){try{localStorage.setItem(LS,JSON.stringify({kids,prefs}));saveFailed=false}catch(e){if(!saveFailed){saveFailed=true;toast('Progress could not be saved on this tablet. Check that storage is not full.')}}}
+function saveLocal(){try{const t=JSON.stringify({kids,prefs});localStorage.setItem(LS,t);if(Object.keys(kids).length)localStorage.setItem(LS_BAK,t);saveFailed=false}catch(e){if(!saveFailed){saveFailed=true;toast('Progress could not be saved on this tablet. Check that storage is not full.')}}}
 function saveKid(k){k.updated=Date.now();markDirty(k.id);saveLocal();scheduleSync()}
 function deleteKid(id){delete kids[id];markDirty(id);saveLocal();scheduleSync()}
 
@@ -1237,7 +1242,7 @@ function Parent(){
   return `<div class="screen">
     <div class="topbar"><button class="btn ghost" data-act="home0">‹ Back</button><h2>Grown-ups</h2><span style="width:60px"></span></div>
     <div class="tabs">${list.map(x=>`<button class="chip ${x.id===k.id?'on':''}" data-act="ptab" data-v="${x.id}">${avHTML(x.avatar)} ${esc(x.name)}${kids[x.id]?'':' <span class="cloud" aria-label="from another device">☁︎</span>'}</button>`).join('')}</div>
-    ${isRemote?`<div class="panel spread remote"><p><b>${esc(k.name)}'s progress from another device.</b> <span class="muted">Updated ${ago(k._at)}. Change ${esc(k.name)}'s math on their own tablet.</span></p><button class="btn" data-act="famrefresh">Refresh</button></div>`:''}
+    ${isRemote?`<div class="panel spread remote"><p><b>${esc(k.name)}'s progress from another device.</b> <span class="muted">Updated ${ago(k._at)}. Change ${esc(k.name)}'s math on their own tablet.</span></p><div class="row"><button class="btn" data-act="famrefresh">Refresh</button><button class="btn primary" data-act="famrestore" data-v="${k.id}">Put on this tablet</button></div><p class="muted" style="flex-basis:100%">Use <b>Put on this tablet</b> on ${esc(k.name)}'s own tablet to bring back progress that's missing there.</p></div>`:''}
     <div class="tiles">
       <div class="tile"><span class="label">This week</span><b>${week}</b>problems</div>
       <div class="tile"><span class="label">Accuracy</span><b>${A?Math.round(R/A*100)+'%':'—'}</b>${R} of ${A} right</div>
@@ -1423,6 +1428,7 @@ $app.addEventListener('click',e=>{
     case 'famleaveask':view.famLeave=true;render();break;
     case 'famstay':view.famLeave=false;render();break;
     case 'famleave':prefs.famId='';prefs.famCode='';prefs.syncDirty={};remoteKids={};famFetchedAt=0;saveLocal();view.famLeave=false;view.famMsg='Syncing is off on this device.';view.famErr=false;render();break;
+    case 'famrestore':{const r=remoteKids[v];if(!r)break;const k=migrate(clone(r));delete k._at;kids[k.id]=k;saveKid(k);toast(k.name+' is on this tablet now');render();break;}
     case 'famrefresh':fetchFamily().then(ok=>{toast(ok?'Updated':'Couldn\'t reach the family sync. Check the internet connection.');if(screen==='parent')render()});break;
     case 'delkid':deleteKid(v);go('parent',{});toast('Player deleted');break;
     case 'adapt':{const k=kids[v];if(k){adapt(k).on=!adapt(k).on;saveKid(k);render()}break;}
