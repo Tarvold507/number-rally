@@ -605,10 +605,10 @@ function fresh(s,op,noRem){
   if(op==='add')return mk(ri(0,s.addMax),'add',ri(0,s.addMax));
   if(op==='sub'){let a=ri(0,s.addMax),b=ri(0,s.addMax);if(!s.neg&&a<b)[a,b]=[b,a];return mk(a,'sub',b)}
   const tb=s.tables&&s.tables.length?s.tables:null;
-  // Each table runs from ×1 to ×12, e.g. the 7s are 7×1 through 7×12.
-  if(op==='mul'){const t=tb?pick(tb):ri(1,s.mulMax),o=ri(1,TABLE_TO);return Math.random()<.5?mk(t,'mul',o):mk(o,'mul',t)}
-  const d=tb?pick(tb):ri(1,s.mulMax),q=ri(1,TABLE_TO);
-  if(s.rem&&!noRem)return mkRem(d,q,d>1&&Math.random()<.6?ri(1,d-1):0);
+  // Each table runs from ×0 to ×12, e.g. the 7s are 7×0 through 7×12.
+  if(op==='mul'){const t=tb?pick(tb):ri(1,s.mulMax),o=ri(0,TABLE_TO);return Math.random()<.5?mk(t,'mul',o):mk(o,'mul',t)}
+  const d=tb?pick(tb):ri(1,s.mulMax),q=ri(0,TABLE_TO);
+  if(s.rem&&!noRem)return mkRem(d,q,d>1&&q>0&&Math.random()<.6?ri(1,d-1):0);
   return mk(d*q,'div',d);
 }
 /* ----- more skills ----- */
@@ -669,8 +669,8 @@ function fits(s,a,op,b){
   const tb=s.tables||[];
   if(op==='add')return a<=s.addMax&&b<=s.addMax;
   if(op==='sub')return a<=s.addMax&&b<=s.addMax&&(s.neg||a>=b);
-  if(op==='mul'){if(a<1||b<1)return false;return tb.length?((tb.includes(a)&&b<=TABLE_TO)||(tb.includes(b)&&a<=TABLE_TO)):((a<=s.mulMax&&b<=TABLE_TO)||(b<=s.mulMax&&a<=TABLE_TO))}
-  if(b===0||a===0)return false;
+  if(op==='mul'){return tb.length?((tb.includes(a)&&b<=TABLE_TO)||(tb.includes(b)&&a<=TABLE_TO)):((a<=s.mulMax&&b<=TABLE_TO)||(b<=s.mulMax&&a<=TABLE_TO))}
+  if(b===0)return false;
   const q=a/b;return tb.length?(tb.includes(b)&&q<=TABLE_TO):(b<=s.mulMax&&q<=TABLE_TO);
 }
 function weakPick(k,only){
@@ -1018,7 +1018,7 @@ function Settings(){
         <p class="muted">Bigger numbers mean carrying and borrowing, like 347 + 285.</p>
         <div ${s.ops.includes('sub')?'':'hidden'}>${tog('neg',s.neg,'Allow answers below zero')}</div></div>
       <div class="panel field" ${hasMD?'':'hidden'}><span class="label">Times & dividing: practice the tables up to</span>${seg('mulMax',[5,10,12],s.mulMax)}
-        <p class="muted">Each table goes from ×1 to ×12. For example, the 7s are 7 × 1 through 7 × 12, and 84 ÷ 7 = 12.</p>
+        <p class="muted">Each table goes from ×0 to ×12. For example, the 7s are 7 × 0 through 7 × 12, and 84 ÷ 7 = 12.</p>
         <span class="label" style="margin-top:6px">Only practice these tables</span>
         <div class="chips">${[1,2,3,4,5,6,7,8,9,10,11,12].map(t=>`<button class="chip ${s.tables.includes(t)?'on':''}" data-act="table" data-v="${t}">${t}</button>`).join('')}</div>
         <p class="muted">${s.tables.length?'Only the '+s.tables.join(', ')+' table'+(s.tables.length>1?'s':'')+'.':'None picked means every table up to '+s.mulMax+'.'}</p>
